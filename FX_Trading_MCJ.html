@@ -1,0 +1,1538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FX Trading — MCJ Hedge Fund</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap');
+
+/* ── TOKENS ── */
+:root {
+  --navy:     #1A2744;
+  --navy2:    #243158;
+  --navy3:    #2E3F6F;
+  --gold:     #C9A84C;
+  --bg:       #F2F3F6;
+  --bg2:      #E8E9ED;
+  --white:    #FFFFFF;
+  --border:   rgba(26,39,68,0.11);
+  --border2:  rgba(26,39,68,0.20);
+  --text1:    #1A2744;
+  --text2:    #4A5478;
+  --text3:    #8892B0;
+  --red:      #C0392B;
+  --red-bg:   #FDECEA;
+  --green:    #1E8449;
+  --green-bg: #E8F5E9;
+  --amber:    #B7770D;
+  --amber-bg: #FFF8E1;
+  --r: 8px; --rl: 12px;
+  /* Order type colours */
+  --ot1b:#1A2744; --ot1c:#fff;
+  --ot2b:#6C3483; --ot2c:#fff;
+  --ot3b:#1E5631; --ot3c:#E8F5E9;
+  --ot4b:#1A7A4A; --ot4c:#fff;
+  /* Confidence */
+  --cr1b:#E8F5E9; --cr1c:#1E5631; --cr1e:#1A7A4A;
+  --cr2b:#E0F2F1; --cr2c:#0E6655; --cr2e:#1D9E75;
+  --cr3b:#FFF8E1; --cr3c:#B7770D; --cr3e:#F39C12;
+  --cr4b:#FDECEA; --cr4c:#C0392B; --cr4e:#E74C3C;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin:0; padding:0; }
+
+body {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 13.5px;
+  background: var(--bg);
+  color: var(--text1);
+  min-height: 100vh;
+}
+
+/* ══════════════════════════════
+   TOP BAR
+══════════════════════════════ */
+.topbar {
+  background: var(--navy);
+  padding: 0 16px;
+  position: sticky; top:0; z-index:200;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.18);
+}
+.tb-r1 {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:9px 0; border-bottom:1px solid rgba(255,255,255,0.08);
+  gap:12px; flex-wrap:wrap;
+}
+.logo {
+  font-size:15px; font-weight:600; letter-spacing:-.3px; color:#fff;
+  display:flex; align-items:center; gap:8px;
+}
+.logo-dot { width:8px; height:8px; border-radius:50%; background:var(--gold); }
+.tb-mid { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.tb-right { display:flex; align-items:center; gap:14px; font-size:12px; color:rgba(255,255,255,.65); flex-wrap:wrap; }
+.tb-right strong { color:#fff; font-weight:500; }
+
+.sess-pill {
+  padding:3px 10px; border-radius:20px;
+  font-size:11px; font-weight:500; white-space:nowrap;
+}
+.sp-yellow  { background:#FFFDE7; color:#7F6000; }
+.sp-blue    { background:#DEEAF1; color:#1F3864; }
+.sp-purple  { background:#EDE7F6; color:#4527A0; }
+.sp-orange  { background:#FBE9E7; color:#BF360C; }
+.sp-red     { background:#FDECEA; color:#B71C1C; }
+.sp-dkgreen { background:#E8F5E9; color:#1B5E20; }
+.sp-gray    { background:rgba(255,255,255,.15); color:rgba(255,255,255,.8); }
+
+.sess-override { display:flex; align-items:center; gap:5px; font-size:11px; color:rgba(255,255,255,.55); }
+.sess-override select {
+  font-size:11px; padding:2px 5px;
+  border:1px solid rgba(255,255,255,.2); border-radius:4px;
+  background:rgba(255,255,255,.08); color:#fff; font-family:inherit; cursor:pointer;
+}
+.sess-override select option { background:var(--navy); }
+
+.em-pill { padding:3px 10px; border-radius:20px; font-size:11px; font-weight:500; }
+.ep-calm        { background:#B2DFDB; color:#004D40; }
+.ep-tension     { background:#FFF9C4; color:#F57F17; }
+.ep-elevated    { background:#FFE0B2; color:#E65100; }
+.ep-compromised { background:#FFCDD2; color:#B71C1C; }
+
+.save-ind { font-size:10px; color:#6FCF97; opacity:0; transition:opacity .3s; }
+.save-ind.show { opacity:1; }
+
+/* tb row 2 */
+.tb-r2 {
+  display:grid; grid-template-columns:1fr auto auto;
+  gap:16px; padding:9px 0; align-items:start;
+}
+
+/* Emotion scale */
+.em-lbl { font-size:10px; font-weight:500; color:rgba(255,255,255,.45); text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px; }
+.em-track { display:flex; border-radius:6px; overflow:hidden; border:1px solid rgba(255,255,255,.12); height:30px; }
+.em-cell {
+  flex:1; display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:500; cursor:pointer;
+  border-right:1px solid rgba(255,255,255,.08);
+  user-select:none; transition:filter .12s;
+}
+.em-cell:last-child { border-right:none; }
+.em-cell.active { outline:2px solid #fff; outline-offset:-2px; font-weight:700; }
+.em-cell:hover { filter:brightness(1.12); }
+.em-zone-bar { display:flex; margin-top:3px; }
+.em-zone-lbl { text-align:center; font-size:9px; }
+
+/* Week tracker */
+.tracker-panel {
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+  border-radius:var(--r); padding:7px 11px; min-width:255px;
+}
+.tracker-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+.tracker-days { display:grid; grid-template-columns:repeat(5,1fr); gap:3px; }
+.tracker-day {
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07);
+  border-radius:4px; padding:3px; text-align:center;
+}
+.td-lbl { font-size:9px; color:rgba(255,255,255,.4); margin-bottom:2px; }
+.td-entries { display:flex; flex-direction:column; gap:2px; min-height:18px; }
+.trade-dot {
+  font-size:9px; font-weight:500; padding:1px 2px;
+  border-radius:2px; cursor:pointer; user-select:none;
+}
+.dot-win  { background:#1A7A4A; color:#fff; }
+.dot-loss { background:#C0392B; color:#fff; }
+.dot-be   { background:#4A5478; color:#fff; }
+.td-add { display:flex; gap:2px; margin-top:2px; justify-content:center; }
+.add-btn {
+  font-size:9px; padding:1px 4px; border-radius:2px;
+  border:none; cursor:pointer; font-family:inherit; font-weight:500;
+}
+.add-w { background:#1A7A4A; color:#fff; }
+.add-l { background:#C0392B; color:#fff; }
+.add-b { background:#4A5478; color:#fff; }
+.tracker-summary { display:flex; gap:8px; margin-top:4px; font-size:10px; color:rgba(255,255,255,.55); }
+.tracker-summary strong { color:#fff; }
+.consec-warn { font-size:10px; color:#FFCDD2; font-weight:500; margin-top:3px; display:none; }
+
+/* Targets panel */
+.targets-panel {
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+  border-radius:var(--r); padding:7px 11px; min-width:188px;
+}
+.target-item { display:flex; align-items:center; gap:5px; font-size:11px; color:rgba(255,255,255,.68); padding:2px 0; border-bottom:1px solid rgba(255,255,255,.05); }
+.target-item:last-child { border-bottom:none; }
+.target-item.rule { color:#FFCDD2; }
+.tdot { width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+
+/* ══════════════════════════════
+   NAV BAR
+══════════════════════════════ */
+.nav-bar {
+  background:var(--white); border-bottom:1px solid var(--border);
+  padding:0 16px; display:flex; gap:0; overflow-x:auto;
+}
+.nav-tab {
+  padding:10px 15px; font-size:13px; font-weight:400; color:var(--text3);
+  cursor:pointer; border:none; background:transparent; font-family:inherit;
+  border-bottom:2px solid transparent; margin-bottom:-1px;
+  transition:color .14s, border-color .14s; white-space:nowrap;
+}
+.nav-tab:hover { color:var(--text2); }
+.nav-tab.on { color:var(--navy); font-weight:500; border-bottom-color:var(--navy); }
+
+/* ══════════════════════════════
+   PANELS / PAGE
+══════════════════════════════ */
+.panel { display:none; }
+.panel.on { display:block; }
+.page { padding:10px 12px; }
+
+/* ══════════════════════════════
+   CARDS
+══════════════════════════════ */
+.card {
+  background:var(--white); border:1px solid var(--border);
+  border-radius:var(--rl); overflow:hidden; margin-bottom:10px;
+}
+.card-hdr {
+  padding:8px 13px; background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;
+}
+.card-title { font-size:12.5px; font-weight:500; color:var(--text1); }
+
+/* ══════════════════════════════
+   MAIN TABLE
+══════════════════════════════ */
+.tbl-wrap { overflow-x:auto; }
+.tbl { width:100%; border-collapse:collapse; font-size:12.5px; }
+.tbl th {
+  padding:6px 7px; font-weight:500; font-size:11px;
+  text-align:center; background:var(--navy); color:#fff;
+  border-right:1px solid rgba(255,255,255,.1);
+  white-space:nowrap; cursor:help;
+}
+.tbl th.thl { text-align:left; cursor:default; }
+.tbl th.ph  { background:#7B1A1A; }
+.tbl th:last-child { border-right:none; }
+.tbl td {
+  padding:5px 7px; border-bottom:1px solid var(--border);
+  border-right:1px solid var(--border);
+  vertical-align:middle; white-space:nowrap; text-align:center;
+}
+.tbl td.tdl { text-align:left; }
+.tbl td:last-child { border-right:none; }
+.tbl tr:last-child td { border-bottom:none; }
+/* Hover only on unstyled cells */
+.tbl tbody tr:hover td:not([class*="-bg"]):not(.ot1):not(.ot2):not(.ot3):not(.ot4) {
+  background:#F6F7FA;
+}
+/* Group header rows */
+.grp-row td {
+  background:var(--bg2) !important;
+  font-size:10.5px; font-weight:600; color:var(--text3);
+  letter-spacing:.06em; text-transform:uppercase;
+  padding:5px 10px; text-align:left;
+  border-bottom:1px solid var(--border2);
+}
+
+/* ── Expand button ── */
+.ebtn {
+  width:19px; height:19px; border-radius:3px;
+  border:1px solid var(--border2); background:transparent;
+  cursor:pointer; font-size:10px; color:var(--text3); font-family:inherit;
+  display:inline-flex; align-items:center; justify-content:center;
+  transition:all .13s;
+}
+.ebtn:hover { background:var(--bg2); }
+.ebtn.open  { background:var(--navy); color:#fff; border-color:var(--navy); }
+
+/* ── Dropdowns in table ── */
+.sel-c {
+  font-size:12px; padding:3px 5px;
+  border:1px solid rgba(0,0,0,.12); border-radius:4px;
+  background:transparent; color:inherit;
+  font-family:inherit; width:120px; cursor:pointer;
+}
+.sel-c:focus { outline:none; border-color:var(--navy); }
+
+/* ── Coloured dropdown cells ── */
+/* Position */
+.pos-lwt { background:#DEEAF1; color:#1F3864; }
+.pos-lrt { background:#E8EAF6; color:#283593; }
+.pos-swt { background:#FDECEA; color:#B71C1C; }
+.pos-srt { background:#FCE4D6; color:#7B3F00; }
+.pos-neu { background:var(--bg2); color:var(--text3); }
+/* Cells with coloured bg need select to inherit */
+td[class*="pos-"] select, td[class*="ms-"] select,
+td[class*="cr"] select, td.ot1 select, td.ot2 select, td.ot3 select, td.ot4 select {
+  background:transparent; color:inherit;
+}
+td.ot1 select option, td.ot2 select option, td.ot3 select option, td.ot4 select option,
+td.pos-lwt select option, td.pos-lrt select option, td.pos-swt select option,
+td.pos-srt select option { background:#fff; color:var(--text1); }
+
+/* Order type */
+.ot1 { background:var(--ot1b); color:var(--ot1c); }
+.ot2 { background:var(--ot2b); color:var(--ot2c); }
+.ot3 { background:var(--ot3b); color:var(--ot3c); }
+.ot4 { background:var(--ot4b); color:var(--ot4c); }
+
+/* Market structure */
+.ms-bull { background:#DEEAF1; color:#1F3864; }
+.ms-bear { background:#FDECEA; color:#B71C1C; }
+.ms-rang { background:#FFF8E1; color:#B7770D; }
+.ms-neu  { background:var(--bg2); color:var(--text3); }
+
+/* Confidence */
+.cr1 { background:var(--cr1b); color:var(--cr1c); border:1px solid var(--cr1e); }
+.cr2 { background:var(--cr2b); color:var(--cr2c); border:1px solid var(--cr2e); }
+.cr3 { background:var(--cr3b); color:var(--cr3c); border:1px solid var(--cr3e); }
+.cr4 { background:var(--cr4b); color:var(--cr4c); border:1px solid var(--cr4e); }
+.cr5 { background:var(--bg2);  color:var(--text3); border:1px solid var(--border2); }
+
+/* ── Y/N buttons ── */
+.yn {
+  width:25px; height:20px; border-radius:4px;
+  border:1px solid var(--border2); font-size:11px; font-weight:500;
+  background:var(--bg2); color:var(--text3);
+  cursor:pointer; font-family:inherit; transition:all .1s;
+}
+.yn:hover { border-color:var(--navy); }
+.yn.y  { background:#E8F5E9; border-color:#1A7A4A; color:#1A7A4A; }
+.yn.n  { background:#FDECEA; border-color:#C0392B; color:#C0392B; }
+.yn.yp { background:#C0392B; border-color:#8B1A1A; color:#fff; }
+
+/* ── Score & Grade ── */
+.sc-hi  { color:var(--green); font-weight:600; font-family:'DM Mono',monospace; }
+.sc-md  { color:var(--amber); font-weight:600; font-family:'DM Mono',monospace; }
+.sc-lo  { color:var(--red);   font-weight:600; font-family:'DM Mono',monospace; }
+.sc-nil { color:var(--text3); font-family:'DM Mono',monospace; }
+.grade  { padding:3px 7px; border-radius:4px; font-size:11px; font-weight:500; white-space:nowrap; display:inline-block; }
+.g-ap   { background:#1E8449; color:#fff; }
+.g-a    { background:#1A7A4A; color:#fff; }
+.g-b    { background:#F39C12; color:#fff; }
+.g-no   { background:#C0392B; color:#fff; }
+.g-nil  { color:var(--text3); font-size:11px; }
+
+/* ── Expanded row ── */
+.exp-panel { background:#EDF2FB; border-top:2px solid var(--navy3); padding:12px 16px; }
+.ep-top { display:flex; align-items:center; gap:10px; margin-bottom:9px; }
+.ep-pair { font-size:13px; font-weight:600; color:var(--navy); }
+.ep-actions { display:flex; gap:6px; margin-left:auto; }
+.clr-btn {
+  padding:4px 10px; font-size:11px; border-radius:4px;
+  border:1px solid var(--red); color:var(--red);
+  background:var(--white); cursor:pointer; font-family:inherit; transition:all .14s;
+}
+.clr-btn:hover { background:var(--red); color:#fff; }
+.ep-sec {
+  font-size:10px; font-weight:600; color:var(--text3);
+  text-transform:uppercase; letter-spacing:.06em;
+  margin:9px 0 6px; border-left:3px solid var(--navy3); padding-left:7px;
+}
+.prep-grid-exp { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; }
+.ck-item {
+  display:flex; align-items:flex-start; gap:6px;
+  cursor:pointer; padding:4px 6px; border-radius:4px;
+  background:rgba(255,255,255,.55); border:1px solid rgba(0,0,0,.04);
+  transition:background .1s;
+}
+.ck-item:hover { background:rgba(255,255,255,.9); }
+.ck-num { font-size:10px; font-weight:600; color:var(--navy3); min-width:18px; flex-shrink:0; padding-top:1px; font-family:'DM Mono',monospace; }
+.ck-box {
+  width:14px; height:14px; border-radius:3px;
+  border:1.5px solid var(--border2); background:var(--white);
+  flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  margin-top:1px; transition:all .1s;
+}
+.ck-box.done { background:var(--navy); border-color:var(--navy); }
+.ck-tick { width:6px; height:4px; border-left:1.5px solid #fff; border-bottom:1.5px solid #fff; transform:rotate(-45deg) translateY(-1px); }
+.ck-lbl { font-size:11px; color:var(--text1); line-height:1.3; }
+.ck-lbl.done { color:var(--text3); text-decoration:line-through; }
+.pb-wrap { height:4px; background:var(--bg2); border-radius:2px; overflow:hidden; }
+.pb-fill { height:100%; border-radius:2px; transition:width .3s; }
+
+/* ══════════════════════════════
+   RISK STRIP (above table)
+══════════════════════════════ */
+.risk-strip {
+  display:flex; align-items:center; justify-content:space-between;
+  gap:10px; margin-bottom:8px; flex-wrap:wrap;
+}
+.rs-pill {
+  background:var(--white); border:1px solid var(--border);
+  border-radius:var(--r); padding:5px 12px; font-size:12.5px; white-space:nowrap;
+}
+.hint {
+  background:#FFFDE7; border:1px solid #F9A825; border-radius:var(--r);
+  padding:5px 11px; font-size:11.5px; color:#6D4C00;
+  display:flex; align-items:center; gap:7px; flex:1;
+}
+.hint-dot { width:5px; height:5px; border-radius:50%; background:#F9A825; flex-shrink:0; }
+.filter-bar { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+.filter-sel {
+  font-size:12px; padding:3px 7px;
+  border:1px solid var(--border2); border-radius:4px;
+  background:var(--white); color:var(--text1); font-family:inherit; cursor:pointer;
+}
+
+/* ══════════════════════════════
+   ANALYSIS PREP TAB
+══════════════════════════════ */
+.prep-cards { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; padding:12px; }
+.prep-card {
+  background:var(--bg2); border-radius:var(--r);
+  padding:10px 11px; border:1px solid var(--border);
+}
+.prep-card-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.prep-pair { font-size:12.5px; font-weight:600; color:var(--navy); }
+.prep-steps { display:flex; flex-direction:column; gap:2px; }
+
+/* ══════════════════════════════
+   RISK MANAGER TAB
+══════════════════════════════ */
+.rm-layout { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.cfg-row {
+  display:grid; grid-template-columns:220px 1fr;
+  gap:8px; align-items:center;
+  padding:7px 14px; border-bottom:1px solid var(--border); font-size:13px;
+}
+.cfg-row:last-child { border-bottom:none; }
+.cfg-input {
+  font-size:13px; padding:5px 8px;
+  border:1px solid var(--border2); border-radius:var(--r);
+  background:var(--white); color:var(--text1);
+  font-family:inherit; max-width:150px;
+}
+.cfg-input:focus { outline:none; border-color:var(--navy); }
+.rm-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:10px; }
+.rm { background:var(--bg2); border-radius:var(--r); padding:8px 10px; }
+.rm-lbl { font-size:10.5px; color:var(--text3); margin-bottom:2px; }
+.rm-val { font-size:17px; font-weight:500; }
+
+/* ══════════════════════════════
+   WEEKLY VIEW TAB
+══════════════════════════════ */
+.wk-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; padding:12px; }
+.wk-day {
+  background:var(--bg2); border-radius:var(--r);
+  padding:10px 8px; text-align:center; border:1px solid var(--border);
+}
+.wk-lbl { font-size:10.5px; color:var(--text3); margin-bottom:4px; }
+.wk-val { font-size:18px; font-weight:500; margin-bottom:5px; }
+.wk-inp {
+  width:100%; font-size:12px; padding:4px 5px;
+  border:1px solid var(--border2); border-radius:4px;
+  background:var(--white); color:var(--text1);
+  font-family:inherit; text-align:center;
+}
+.wk-inp:focus { outline:none; border-color:var(--navy); }
+
+/* ══════════════════════════════
+   POINTS CONFIG TAB
+══════════════════════════════ */
+.cfg-crit-row {
+  display:grid; grid-template-columns:250px 1fr 100px;
+  gap:8px; align-items:center;
+  padding:6px 14px; border-bottom:1px solid var(--border); font-size:12.5px;
+}
+.cfg-crit-row:last-child { border-bottom:none; }
+.cfg-mono { font-size:11px; font-family:'DM Mono',monospace; font-weight:500; color:var(--text3); }
+.cfg-mono.pen { color:var(--red); }
+
+/* ══════════════════════════════
+   SETTINGS TAB
+══════════════════════════════ */
+.settings-grid { display:grid; grid-template-columns:1fr 1fr; }
+.set-section { padding:12px 14px; border-right:1px solid var(--border); border-bottom:1px solid var(--border); }
+.set-section:nth-child(even) { border-right:none; }
+.set-section:nth-last-child(-n+2) { border-bottom:none; }
+.set-lbl { font-size:12px; font-weight:500; color:var(--text2); margin-bottom:5px; }
+.set-ta {
+  width:100%; font-size:11.5px; padding:7px 8px; line-height:1.7;
+  border:1px solid var(--border2); border-radius:var(--r);
+  background:var(--white); color:var(--text1);
+  font-family:'DM Mono',monospace; resize:vertical; height:105px;
+}
+.set-ta:focus { outline:none; border-color:var(--navy); }
+
+/* ══════════════════════════════
+   LEGENDS TAB
+══════════════════════════════ */
+.leg-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.leg-row {
+  display:flex; align-items:center; gap:8px;
+  padding:5px 0; border-bottom:1px solid var(--border);
+  font-size:12px; color:var(--text2);
+}
+.leg-row:last-child { border-bottom:none; }
+.leg-badge { min-width:100px; flex-shrink:0; }
+.crit-ref { display:grid; grid-template-columns:repeat(4,1fr); }
+.crit-cell { padding:9px 13px; border-right:1px solid var(--border); border-bottom:1px solid var(--border); }
+.crit-cell:nth-child(4n) { border-right:none; }
+.crit-cell:nth-last-child(-n+4) { border-bottom:none; }
+.crit-title { font-size:10.5px; font-weight:700; color:var(--navy); margin-bottom:3px; font-family:'DM Mono',monospace; }
+.crit-title.pen { color:var(--red); }
+.crit-desc { font-size:11.5px; color:var(--text2); line-height:1.4; }
+.pen-row { background:#FEF9F9; }
+
+/* ── Shared ── */
+.ot-badge { padding:3px 8px; border-radius:4px; font-size:12px; font-weight:500; display:inline-block; }
+.cr-badge { padding:3px 8px; border-radius:4px; font-size:12px; font-weight:500; display:inline-block; border:1px solid transparent; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     TOP BAR
+══════════════════════════════════════════════════════ -->
+<div class="topbar">
+  <div class="tb-r1">
+    <div class="logo"><div class="logo-dot"></div>FX Trading — MCJ Hedge Fund</div>
+    <div class="tb-mid">
+      <span id="sess-pill" class="sess-pill sp-gray">Detecting…</span>
+      <div class="sess-override">
+        Override:
+        <select id="sess-sel" onchange="overrideSession(this.value)">
+          <option value="">Auto</option>
+          <option>Tokyo Pre Open</option><option>Tokyo Open</option><option>Tokyo Open +1Hr</option>
+          <option>London Pre Push</option><option>London Open</option><option>London Open +1Hr</option>
+          <option>NY Pre Open</option><option>New York Open</option>
+          <option>London Fade / NY Reversal</option><option>Off Hours</option>
+        </select>
+      </div>
+      <span id="clock-el" style="font-size:11px;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">--:--:-- AEST</span>
+    </div>
+    <div class="tb-right">
+      <span>Balance <strong id="tb-bal">$9,000</strong></span>
+      <span>Risk <strong id="tb-risk">$45/trade</strong></span>
+      <span class="em-pill ep-calm" id="tb-em">Calm / detached</span>
+      <span class="save-ind" id="save-ind">✓ Saved</span>
+    </div>
+  </div>
+  <div class="tb-r2">
+    <!-- Emotional scale -->
+    <div>
+      <div class="em-lbl">Emotional scale — select current level</div>
+      <div class="em-track" id="em-track"></div>
+      <div class="em-zone-bar" id="em-zone-bar"></div>
+    </div>
+    <!-- Week tracker -->
+    <div class="tracker-panel">
+      <div class="tracker-top">
+        <div class="em-lbl" style="margin-bottom:0">Week trade tracker</div>
+        <button onclick="clearTracker()" style="font-size:9px;padding:1px 5px;border:1px solid rgba(255,255,255,.18);border-radius:3px;background:transparent;color:rgba(255,255,255,.4);cursor:pointer;font-family:inherit">Reset week</button>
+      </div>
+      <div class="tracker-days" id="tracker-days"></div>
+      <div class="tracker-summary">
+        <span>W: <strong id="ts-w">0</strong></span>
+        <span>L: <strong id="ts-l">0</strong></span>
+        <span>B/E: <strong id="ts-b">0</strong></span>
+        <span>Win%: <strong id="ts-wr">—</strong></span>
+        <span>Total: <strong id="ts-t">0</strong></span>
+      </div>
+      <div class="consec-warn" id="consec-warn"></div>
+    </div>
+    <!-- Targets -->
+    <div class="targets-panel">
+      <div class="em-lbl" style="margin-bottom:5px">Weekly targets & rules</div>
+      <div class="target-item"><div class="tdot" style="background:var(--gold)"></div>Weekly return 1.5–2.5%</div>
+      <div class="target-item"><div class="tdot" style="background:var(--gold)"></div>Monthly return 6–8%</div>
+      <div class="target-item rule"><div class="tdot" style="background:#E74C3C"></div>Max DD ≤ 3% / week</div>
+      <div class="target-item"><div class="tdot" style="background:var(--gold)"></div>Risk 0.25–0.5% / trade</div>
+      <div class="target-item"><div class="tdot" style="background:var(--gold)"></div>Max 2 trades / day</div>
+      <div class="target-item rule"><div class="tdot" style="background:#E74C3C"></div>No late entries / chasing</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     NAV
+══════════════════════════════════════════════════════ -->
+<div class="nav-bar">
+  <button class="nav-tab on" onclick="showTab('checklist',this)">Checklist</button>
+  <button class="nav-tab" onclick="showTab('prep',this)">Analysis prep</button>
+  <button class="nav-tab" onclick="showTab('risk',this)">Risk manager</button>
+  <button class="nav-tab" onclick="showTab('weekly',this)">Weekly view</button>
+  <button class="nav-tab" onclick="showTab('config',this)">Points config</button>
+  <button class="nav-tab" onclick="showTab('settings',this)">Settings</button>
+  <button class="nav-tab" onclick="showTab('legends',this)">Legends</button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     CHECKLIST TAB
+══════════════════════════════════════════════════════ -->
+<div id="panel-checklist" class="panel on">
+  <div class="page">
+    <div class="risk-strip">
+      <div class="hint"><div class="hint-dot"></div>Hover column headers for full criteria descriptions. Click ▶ to expand the analysis prep checklist for any pair.</div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
+        <div class="rs-pill">Balance <strong id="s-bal" style="color:var(--navy)">$9,000</strong></div>
+        <div class="rs-pill">Risk/trade <strong id="s-risk" style="color:var(--navy)">$45</strong></div>
+        <div class="rs-pill">Rem DD <strong id="s-dd" style="color:var(--green)">$270</strong></div>
+        <div class="rs-pill">Week P&L <strong id="s-pnl" style="color:var(--navy)">+$0</strong></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-title">Primary pairs — 14 pairs grouped by currency block</span>
+        <div class="filter-bar">
+          <select class="filter-sel" id="filter-grade" onchange="applyFilters()">
+            <option value="">All grades</option>
+            <option value="ap">A+ only</option>
+            <option value="a">A+ / A</option>
+            <option value="b">B and above</option>
+          </select>
+          <select class="filter-sel" id="filter-ot" onchange="applyFilters()">
+            <option value="">All order types</option>
+            <option value="1 - Open Order">1 – Open Order</option>
+            <option value="2 - Limit Set">2 – Limit Set</option>
+            <option value="3 - Active Watch">3 – Active Watch</option>
+            <option value="4 - Watch">4 – Watch</option>
+            <option value="5 - Neutral">5 – Neutral</option>
+          </select>
+          <select class="filter-sel" id="filter-block" onchange="applyFilters()">
+            <option value="">All blocks</option>
+            <option value="USD block">USD block</option>
+            <option value="JPY block">JPY block</option>
+            <option value="CAD block">CAD block</option>
+            <option value="AUD / NZD block">AUD / NZD block</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th style="width:22px" class="thl"></th>
+              <th class="thl" style="min-width:74px">Pair</th>
+              <th class="thl" style="min-width:120px">Position</th>
+              <th style="min-width:122px">Order type</th>
+              <th class="thl" style="min-width:120px">Mkt struct (4H)</th>
+              <th style="min-width:120px">Confidence</th>
+              <th title="H4 Trend Alignment&#10;Price making HH/HL (bullish) or LL/LH (bearish).&#10;Moves are impulsive — not a slow grind.&#10;+20 pts">H4 Trnd</th>
+              <th title="Clear H4 Structure&#10;Clean swing highs/lows visible.&#10;Strong displacement legs between swings.&#10;+10 pts">H4 Str</th>
+              <th title="HTF Reaction Zone&#10;Entry at meaningful H4 level — prior swing H/L&#10;or strong rejection zone.&#10;+15 pts">HTF Zn</th>
+              <th title="Liquidity Presence&#10;Equal highs/lows or session H/L present.&#10;Liquidity just taken OR about to be taken.&#10;+10 pts">Liq</th>
+              <th title="Strong Zone Departure&#10;Previous move from zone fast and aggressive.&#10;Large candles / clear displacement.&#10;+5 pts">Zn Dep</th>
+              <th title="M5 Market Structure Shift — BOS or CHoCH&#10;Clear break of structure confirming direction&#10;after reaching HTF level. Not anticipatory.&#10;+10 pts">M5 BOS</th>
+              <th title="Displacement / Momentum on M5&#10;Strong move in entry direction.&#10;Clear intent — not weak or overlapping candles.&#10;+5 pts">Disp</th>
+              <th title="Entry Precision&#10;Tight stop loss relative to structure.&#10;Entry not chasing price.&#10;+5 pts">Entry</th>
+              <th title="Correct Trading Session&#10;Trade occurs during Asian or London session only.&#10;+5 pts">Sess</th>
+              <th title="Market Active — Liquidity Conditions Live&#10;Not near session close.&#10;Market is active — not dead / low volatility.&#10;+5 pts">Mkt Act</th>
+              <th title="Risk-to-Reward ≥ 2:1&#10;Minimum 2:1 R:R confirmed before entry.&#10;+5 pts">R:R</th>
+              <th title="Clean Path to Target&#10;No opposing HTF level or choppy consolidation&#10;between entry and target.&#10;+5 pts">Path</th>
+              <th class="ph" title="PENALTY — Trading into HTF Level&#10;Entering against the key level direction.&#10;−15 pts">HTF↓</th>
+              <th class="ph" title="PENALTY — High-impact news imminent&#10;Check economic calendar before every session.&#10;−10 pts">News</th>
+              <th class="ph" title="PENALTY — Choppy / unclear structure&#10;Constant break-and-fail.&#10;No clear swing direction.&#10;−10 pts">Chop</th>
+              <th class="ph" title="PENALTY — Entry far from key level&#10;Chasing price. Stop wider than structure.&#10;−10 pts">Chase</th>
+              <th style="min-width:46px;font-family:'DM Mono',monospace">Score</th>
+              <th style="min-width:110px">Grade</th>
+              <th style="min-width:40px">Prep</th>
+            </tr>
+          </thead>
+          <tbody id="pairs-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     ANALYSIS PREP TAB
+══════════════════════════════════════════════════════ -->
+<div id="panel-prep" class="panel">
+  <div class="page">
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">Analysis prep — 11 numbered steps per pair, work through in order</span></div>
+      <div class="prep-cards" id="prep-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     RISK MANAGER TAB
+══════════════════════════════════════════════════════ -->
+<div id="panel-risk" class="panel">
+  <div class="page">
+    <div class="rm-layout">
+      <div>
+        <div class="card">
+          <div class="card-hdr"><span class="card-title">Account settings</span></div>
+          <div class="cfg-row"><span>Account balance ($)</span><input class="cfg-input" id="ri-bal" type="number" value="9000" oninput="updateRisk();saveAll()"></div>
+          <div class="cfg-row"><span>Risk per trade (%)</span><input class="cfg-input" id="ri-rp"  type="number" value="0.5"  step="0.25" oninput="updateRisk();saveAll()"></div>
+          <div class="cfg-row"><span>Max weekly drawdown (%)</span><input class="cfg-input" id="ri-mdd" type="number" value="3" step="0.5" oninput="updateRisk();saveAll()"></div>
+          <div class="cfg-row"><span>Current weekly DD ($)</span><input class="cfg-input" id="ri-cdd" type="number" value="0" oninput="updateRisk();saveAll()"></div>
+          <div class="cfg-row"><span>Consecutive losses</span><input class="cfg-input" id="ri-cl"  type="number" value="0" oninput="saveAll()"></div>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <div class="card-hdr"><span class="card-title">Calculated values</span></div>
+          <div class="rm-grid">
+            <div class="rm"><div class="rm-lbl">Dollar risk / trade</div><div class="rm-val" id="ri-dr">$45</div></div>
+            <div class="rm"><div class="rm-lbl">Remaining drawdown</div><div class="rm-val" id="ri-rdd">$270</div></div>
+            <div class="rm"><div class="rm-lbl">Weekly target (low)</div><div class="rm-val" id="ri-wtl">$135</div></div>
+            <div class="rm"><div class="rm-lbl">Weekly target (high)</div><div class="rm-val" id="ri-wth">$225</div></div>
+            <div class="rm"><div class="rm-lbl">Monthly target (low)</div><div class="rm-val" id="ri-mtl">$540</div></div>
+            <div class="rm"><div class="rm-lbl">Monthly target (high)</div><div class="rm-val" id="ri-mth">$720</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     WEEKLY VIEW TAB
+══════════════════════════════════════════════════════ -->
+<div id="panel-weekly" class="panel">
+  <div class="page">
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">Weekly P&L</span></div>
+      <div class="wk-grid">
+        <div class="wk-day"><div class="wk-lbl">Monday</div><div class="wk-val" id="wd-mon">—</div><input class="wk-inp" id="wi-mon" placeholder="+/-$" oninput="updateWeekly()"></div>
+        <div class="wk-day"><div class="wk-lbl">Tuesday</div><div class="wk-val" id="wd-tue">—</div><input class="wk-inp" id="wi-tue" placeholder="+/-$" oninput="updateWeekly()"></div>
+        <div class="wk-day"><div class="wk-lbl">Wednesday</div><div class="wk-val" id="wd-wed">—</div><input class="wk-inp" id="wi-wed" placeholder="+/-$" oninput="updateWeekly()"></div>
+        <div class="wk-day"><div class="wk-lbl">Thursday</div><div class="wk-val" id="wd-thu">—</div><input class="wk-inp" id="wi-thu" placeholder="+/-$" oninput="updateWeekly()"></div>
+        <div class="wk-day"><div class="wk-lbl">Friday</div><div class="wk-val" id="wd-fri">—</div><input class="wk-inp" id="wi-fri" placeholder="+/-$" oninput="updateWeekly()"></div>
+      </div>
+      <div class="rm-grid">
+        <div class="rm"><div class="rm-lbl">Week total</div><div class="rm-val" id="wk-tot">$0</div></div>
+        <div class="rm"><div class="rm-lbl">Return %</div><div class="rm-val" id="wk-pct">0.0%</div></div>
+        <div class="rm"><div class="rm-lbl">Vs target</div><div class="rm-val" id="wk-vs" style="font-size:14px;color:var(--text3)">Below target</div></div>
+        <div class="rm"><div class="rm-lbl">Max trades / day</div><div class="rm-val">2</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">Week notes</span></div>
+      <div style="padding:10px 14px">
+        <textarea id="wk-notes" style="width:100%;min-height:90px;font-size:13px;padding:8px;border:1px solid var(--border2);border-radius:var(--r);background:var(--white);color:var(--text1);font-family:inherit;resize:vertical;line-height:1.5" placeholder="Notes from the week…" oninput="saveAll()"></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     POINTS CONFIG TAB
+══════════════════════════════════════════════════════ -->
+<div id="panel-config" class="panel">
+  <div class="page">
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">Points configuration — edit values; all scores recalculate live</span></div>
+      <div id="cfg-rows"></div>
+      <div style="padding:12px 14px;background:var(--bg2);border-top:1px solid var(--border)">
+        <div style="font-size:12px;font-weight:600;margin-bottom:8px">Scoring thresholds</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+          <div style="background:#1E8449;color:#fff;border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:600">A+</div><div style="font-size:11px;opacity:.85;margin-top:2px">≥ 80 pts — Full risk</div></div>
+          <div style="background:#1A7A4A;color:#fff;border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:600">A</div><div style="font-size:11px;opacity:.85;margin-top:2px">65–79 — Normal risk</div></div>
+          <div style="background:#F39C12;color:#fff;border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:600">B</div><div style="font-size:11px;opacity:.9;margin-top:2px">50–64 — Reduce risk</div></div>
+          <div style="background:#C0392B;color:#fff;border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:600">No trade</div><div style="font-size:11px;opacity:.85;margin-top:2px">&lt; 50 pts</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     SETTINGS TAB
+══════════════════════════════════════════════════════ -->
+<div id="panel-settings" class="panel">
+  <div class="page">
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">Settings — edit dropdown lists (one value per line). Changes apply instantly across the app.</span></div>
+      <div class="settings-grid">
+        <div class="set-section"><div class="set-lbl">Position options</div><textarea id="set-pos" class="set-ta" oninput="saveSettings();renderTable()"></textarea></div>
+        <div class="set-section"><div class="set-lbl">Order type options</div><textarea id="set-ot" class="set-ta" oninput="saveSettings();renderTable()"></textarea></div>
+        <div class="set-section"><div class="set-lbl">Market structure options</div><textarea id="set-ms" class="set-ta" oninput="saveSettings();renderTable()"></textarea></div>
+        <div class="set-section"><div class="set-lbl">Confidence rating options</div><textarea id="set-cr" class="set-ta" oninput="saveSettings();renderTable()"></textarea></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     LEGENDS TAB
+══════════════════════════════════════════════════════ -->
+<div id="panel-legends" class="panel">
+  <div class="page">
+    <div class="leg-grid" style="margin-bottom:12px">
+      <div class="card">
+        <div class="card-hdr"><span class="card-title">Order type</span></div>
+        <div style="padding:8px 12px">
+          <div class="leg-row"><div class="leg-badge"><span class="ot-badge" style="background:#1A2744;color:#fff">1 – Open order</span></div><span>Live open position</span></div>
+          <div class="leg-row"><div class="leg-badge"><span class="ot-badge" style="background:#6C3483;color:#fff">2 – Limit set</span></div><span>Limit order placed</span></div>
+          <div class="leg-row"><div class="leg-badge" style="background:#1E5631;color:#E8F5E9;padding:3px 8px;border-radius:4px;font-size:12px;font-weight:500">3 – Active watch</div><span style="margin-left:2px">Actively monitoring</span></div>
+          <div class="leg-row"><div class="leg-badge"><span class="ot-badge" style="background:#1A7A4A;color:#fff">4 – Watch</span></div><span>On watchlist</span></div>
+          <div class="leg-row"><div class="leg-badge"><span class="ot-badge" style="background:var(--bg2);color:var(--text3);border:1px solid var(--border2)">5 – Neutral</span></div><span>No action</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><span class="card-title">Confidence rating</span></div>
+        <div style="padding:8px 12px">
+          <div class="leg-row"><div class="leg-badge"><span class="cr-badge" style="background:var(--cr1b);color:var(--cr1c);border-color:var(--cr1e)">1 – Strong</span></div><span>High conviction setup</span></div>
+          <div class="leg-row"><div class="leg-badge"><span class="cr-badge" style="background:var(--cr2b);color:var(--cr2c);border-color:var(--cr2e)">2 – Aligned</span></div><span>Setup aligns with bias</span></div>
+          <div class="leg-row"><div class="leg-badge"><span class="cr-badge" style="background:var(--cr3b);color:var(--cr3c);border-color:var(--cr3e)">3 – Caution</span></div><span>Mixed signals present</span></div>
+          <div class="leg-row"><div class="leg-badge"><span class="cr-badge" style="background:var(--cr4b);color:var(--cr4c);border-color:var(--cr4e)">4 – Risk</span></div><span>Elevated risk — caution</span></div>
+          <div class="leg-row"><div class="leg-badge"><span class="cr-badge" style="background:var(--bg2);color:var(--text3);border-color:var(--border2)">5 – Neutral</span></div><span>No clear signal</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><span class="card-title">Grade</span></div>
+        <div style="padding:8px 12px">
+          <div class="leg-row"><span class="grade g-ap" style="font-size:13px;min-width:80px;text-align:center">A+</span><span style="margin-left:8px;font-weight:500">≥ 80 pts</span><span style="margin-left:5px;color:var(--text3)">Full risk</span></div>
+          <div class="leg-row"><span class="grade g-a"  style="font-size:13px;min-width:80px;text-align:center">A</span><span style="margin-left:8px;font-weight:500">65–79 pts</span><span style="margin-left:5px;color:var(--text3)">Normal risk</span></div>
+          <div class="leg-row"><span class="grade g-b"  style="font-size:13px;min-width:80px;text-align:center">B</span><span style="margin-left:8px;font-weight:500">50–64 pts</span><span style="margin-left:5px;color:var(--text3)">Reduce risk</span></div>
+          <div class="leg-row"><span class="grade g-no" style="font-size:13px;min-width:80px;text-align:center">No trade</span><span style="margin-left:8px;font-weight:500">&lt; 50 pts</span><span style="margin-left:5px;color:var(--text3)">Stand aside</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">Scoring criteria — full reference</span></div>
+      <div class="crit-ref">
+        <div class="crit-cell"><div class="crit-title">C1 — H4 Trnd (+20 pts)</div><div class="crit-desc">HH/HL bullish or LL/LH bearish. Impulsive moves — direction obvious in 3 seconds.</div></div>
+        <div class="crit-cell"><div class="crit-title">C2 — H4 Str (+10 pts)</div><div class="crit-desc">Clean swing highs/lows. Strong displacement legs between swings. Minimal fake breakouts.</div></div>
+        <div class="crit-cell"><div class="crit-title">C3 — HTF Zn (+15 pts)</div><div class="crit-desc">Entry at meaningful H4 level — prior swing H/L, strong rejection zone, aggressive departure area.</div></div>
+        <div class="crit-cell"><div class="crit-title">C4 — Liq (+10 pts)</div><div class="crit-desc">Equal highs/lows or session H/L. Liquidity just taken OR about to be taken before entry.</div></div>
+        <div class="crit-cell"><div class="crit-title">C5 — Zn Dep (+5 pts)</div><div class="crit-desc">Previous move from zone was fast and aggressive. Large candles / clear displacement present.</div></div>
+        <div class="crit-cell"><div class="crit-title">C6 — M5 BOS (+10 pts)</div><div class="crit-desc">Clear BOS or CHoCH on M5 confirming direction after reaching HTF level. Not anticipatory.</div></div>
+        <div class="crit-cell"><div class="crit-title">C7 — Disp (+5 pts)</div><div class="crit-desc">Strong move in entry direction. Clear intent — not weak or overlapping candles.</div></div>
+        <div class="crit-cell"><div class="crit-title">C8 — Entry (+5 pts)</div><div class="crit-desc">Tight stop loss relative to structure. Not chasing price. Stop placed at structural point.</div></div>
+        <div class="crit-cell"><div class="crit-title">C9 — Sess (+5 pts)</div><div class="crit-desc">Trade occurs during Asian or London session only.</div></div>
+        <div class="crit-cell"><div class="crit-title">C10 — Mkt Act (+5 pts)</div><div class="crit-desc">Not near session close. Market is active — not dead or low volatility.</div></div>
+        <div class="crit-cell"><div class="crit-title">C11 — R:R (+5 pts)</div><div class="crit-desc">Minimum 2:1 R:R confirmed before entry. Measure to next HTF level.</div></div>
+        <div class="crit-cell"><div class="crit-title">C12 — Path (+5 pts)</div><div class="crit-desc">No opposing HTF level or choppy consolidation between entry and target.</div></div>
+        <div class="crit-cell pen-row"><div class="crit-title pen">P1 — HTF↓ (−15 pts)</div><div class="crit-desc">Trading INTO HTF level. Entering against the key level direction.</div></div>
+        <div class="crit-cell pen-row"><div class="crit-title pen">P2 — News (−10 pts)</div><div class="crit-desc">High-impact news imminent. Check economic calendar before every session.</div></div>
+        <div class="crit-cell pen-row"><div class="crit-title pen">P3 — Chop (−10 pts)</div><div class="crit-desc">Choppy / unclear structure. Constant break-and-fail. No clear swing direction.</div></div>
+        <div class="crit-cell pen-row"><div class="crit-title pen">P4 — Chase (−10 pts)</div><div class="crit-desc">Entry far from key level. Chasing price. Stop wider than structure requires.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+/* ── STATIC DATA ── */
+var GROUPS = [
+  { label:'USD block',       pairs:['EUR/USD','AUD/USD','GBP/USD'] },
+  { label:'JPY block',       pairs:['AUD/JPY','USD/JPY','EUR/JPY','NZD/JPY'] },
+  { label:'CAD block',       pairs:['USD/CAD','EUR/CAD','NZD/CAD'] },
+  { label:'AUD / NZD block', pairs:['GBP/AUD','GBP/NZD'] },
+  { label:'Other',           pairs:['USD/CHF','XAU/USD'] }
+];
+var ALL_PAIRS = [];
+GROUPS.forEach(function(g){ g.pairs.forEach(function(p){ ALL_PAIRS.push(p); }); });
+
+var PREP_STEPS = [
+  'Review & analyse chart – D1',
+  'Mark key zones & levels – D1',
+  'Review & analyse chart – H4',
+  'Mark key zones & levels – H4',
+  'Mark reversal levels – H4',
+  'Mark key levels – H1',
+  'Analyse announcement impacts',
+  'Identify & evaluate liquidity gaps',
+  'Analyse chart inverted (remove bias)',
+  'Confirm quality setup',
+  'Set alerts'
+];
+
+var CRITERIA = [
+  { abbr:'H4 Trnd', pen:false, pts:20 },
+  { abbr:'H4 Str',  pen:false, pts:10 },
+  { abbr:'HTF Zn',  pen:false, pts:15 },
+  { abbr:'Liq',     pen:false, pts:10 },
+  { abbr:'Zn Dep',  pen:false, pts:5  },
+  { abbr:'M5 BOS',  pen:false, pts:10 },
+  { abbr:'Disp',    pen:false, pts:5  },
+  { abbr:'Entry',   pen:false, pts:5  },
+  { abbr:'Sess',    pen:false, pts:5  },
+  { abbr:'Mkt Act', pen:false, pts:5  },
+  { abbr:'R:R',     pen:false, pts:5  },
+  { abbr:'Path',    pen:false, pts:5  },
+  { abbr:'HTF↓',   pen:true,  pts:-15 },
+  { abbr:'News',    pen:true,  pts:-10 },
+  { abbr:'Chop',    pen:true,  pts:-10 },
+  { abbr:'Chase',   pen:true,  pts:-10 }
+];
+var CRIT_NAMES = [
+  'H4 Trend Alignment','Clear H4 Structure','HTF Reaction Zone','Liquidity Presence',
+  'Strong Zone Departure','M5 BOS / CHoCH','Displacement','Entry Precision',
+  'Correct Session','Market Active','R:R ≥ 2:1','Clean Path to Target',
+  'Into HTF Level','News Imminent','Choppy Structure','Chasing Entry'
+];
+var DEF_PTS = CRITERIA.map(function(c){ return c.pts; });
+
+var DEF_SETTINGS = {
+  pos:['1 - Long - With Trend','1 - Long - Retracement','2 - Short - With Trend','2 - Short - Retracement','3 - Neutral'],
+  ot: ['1 - Open Order','2 - Limit Set','3 - Active Watch','4 - Watch','5 - Neutral'],
+  ms: ['1 - Trending - Bullish','2 - Trending - Bearish','3 - Ranging','4 - Neutral'],
+  cr: ['1 - Strong','2 - Aligned','3 - Caution','4 - Risk','5 - Neutral']
+};
+
+var SESSIONS = [
+  { n:'Tokyo Pre Open',        p:'sp-yellow',  s:480,  e:540  },
+  { n:'Tokyo Open',            p:'sp-yellow',  s:540,  e:660  },
+  { n:'Tokyo Open +1Hr',       p:'sp-yellow',  s:660,  e:720  },
+  { n:'London Pre Push',       p:'sp-purple',  s:900,  e:960  },
+  { n:'London Open',           p:'sp-blue',    s:960,  e:1020 },
+  { n:'London Open +1Hr',      p:'sp-blue',    s:1020, e:1140 },
+  { n:'NY Pre Open',           p:'sp-orange',  s:1320, e:1380 },
+  { n:'New York Open',         p:'sp-red',     s:1380, e:1440 },
+  { n:'New York Open',         p:'sp-red',     s:0,    e:60   },
+  { n:'London Fade / NY Rev.', p:'sp-dkgreen', s:60,   e:120  }
+];
+
+var EM_ZONES = [
+  { lo:1, hi:3,  bg:'#B2DFDB', tc:'#004D40', label:'Calm / Detached',  pill:'ep-calm'        },
+  { lo:4, hi:6,  bg:'#FFF9C4', tc:'#F57F17', label:'Slight Tension',   pill:'ep-tension'     },
+  { lo:7, hi:8,  bg:'#FFE0B2', tc:'#E65100', label:'Elevated Emotion', pill:'ep-elevated'    },
+  { lo:9, hi:10, bg:'#FFCDD2', tc:'#B71C1C', label:'Compromised',      pill:'ep-compromised' }
+];
+
+var WDAY_LABELS = ['Mon','Tue','Wed','Thu','Fri'];
+var WDAYS       = ['mon','tue','wed','thu','fri'];
+
+/* ── RUNTIME STATE ── */
+var currentEmotion  = 5;
+var sessionOverride = null;
+var expandedPair    = null;
+
+/* ══════════════════════════════
+   LOCALSTORAGE HELPERS
+   All data is keyed under 'fx_' prefix and persists between sessions.
+══════════════════════════════ */
+function ls(key, val) {
+  try {
+    if (val === undefined) {
+      var r = localStorage.getItem(key);
+      return r ? JSON.parse(r) : null;
+    }
+    localStorage.setItem(key, JSON.stringify(val));
+  } catch(e) { return null; }
+}
+/* Per-pair data */
+function getPair(pair)       { return ls('fx_pair_' + pair) || {}; }
+function savePair(pair, d)   { ls('fx_pair_' + pair, d); }
+/* App-wide state */
+function getState()          { return ls('fx_state')    || {}; }
+/* Points config */
+function getPts()            { return ls('fx_pts')      || DEF_PTS; }
+/* Settings (dropdown lists) */
+function getSettings()       { return ls('fx_settings') || DEF_SETTINGS; }
+/* Weekly trade tracker */
+function getTracker()        { return ls('fx_tracker')  || { days:[[],[],[],[],[]] }; }
+function saveTracker(t)      { ls('fx_tracker', t); }
+
+/* ── SAVE ALL STATE ── */
+function saveAll() {
+  var st = {};
+  st.emotion = currentEmotion;
+  /* Risk manager inputs */
+  ['ri-bal','ri-rp','ri-mdd','ri-cdd','ri-cl'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) st[id] = el.value;
+  });
+  /* Weekly P&L inputs */
+  WDAYS.forEach(function(d){
+    var el = document.getElementById('wi-' + d);
+    if (el) st['w_' + d] = el.value;
+  });
+  /* Week notes */
+  var wn = document.getElementById('wk-notes');
+  if (wn) st.notes = wn.value;
+  ls('fx_state', st);
+  /* Flash saved indicator */
+  var ind = document.getElementById('save-ind');
+  if (ind) { ind.classList.add('show'); clearTimeout(ind._t); ind._t = setTimeout(function(){ ind.classList.remove('show'); }, 1400); }
+}
+
+/* ── SETTINGS ── */
+function saveSettings() {
+  var s = {};
+  ['pos','ot','ms','cr'].forEach(function(k){
+    var el = document.getElementById('set-' + k);
+    s[k] = el ? el.value.split('\n').map(function(x){ return x.trim(); }).filter(Boolean) : DEF_SETTINGS[k];
+  });
+  ls('fx_settings', s);
+}
+function loadSettingsUI() {
+  var s = getSettings();
+  ['pos','ot','ms','cr'].forEach(function(k){
+    var el = document.getElementById('set-' + k);
+    if (el) el.value = s[k].join('\n');
+  });
+}
+
+/* ══════════════════════════════
+   SCORING
+══════════════════════════════ */
+function emptyChecks() { return ['','','','','','','','','','','','','','','','']; }
+function emptyPrep()   { return [false,false,false,false,false,false,false,false,false,false,false]; }
+
+function calcScore(checks) {
+  var p = getPts(); var s = 0;
+  if (!checks) return 0;
+  for (var i = 0; i < 16; i++) { if (checks[i] === 'Y') s += p[i]; }
+  return s;
+}
+function gradeInfo(score, hasAny) {
+  if (!hasAny) return { cls:'g-nil', lbl:'—' };
+  if (score >= 80) return { cls:'g-ap', lbl:'A+ – Full risk' };
+  if (score >= 65) return { cls:'g-a',  lbl:'A – Normal risk' };
+  if (score >= 50) return { cls:'g-b',  lbl:'B – Reduce risk' };
+  return { cls:'g-no', lbl:'No trade' };
+}
+function scoreClass(s, hasAny) {
+  if (!hasAny) return 'sc-nil';
+  if (s >= 65) return 'sc-hi';
+  if (s >= 50) return 'sc-md';
+  return 'sc-lo';
+}
+
+/* ── Coloured cell class helpers ── */
+function posClass(v) {
+  if (!v) return '';
+  if (v.indexOf('Long')  > -1 && v.indexOf('With Trend') > -1) return 'pos-lwt';
+  if (v.indexOf('Long')  > -1)                                   return 'pos-lrt';
+  if (v.indexOf('Short') > -1 && v.indexOf('With Trend') > -1) return 'pos-swt';
+  if (v.indexOf('Short') > -1)                                   return 'pos-srt';
+  return 'pos-neu';
+}
+function otClass(v) {
+  if (!v) return '';
+  var n = v[0];
+  return n==='1'?'ot1':n==='2'?'ot2':n==='3'?'ot3':n==='4'?'ot4':'';
+}
+function msClass(v) {
+  if (!v) return '';
+  if (v.indexOf('Bullish') > -1) return 'ms-bull';
+  if (v.indexOf('Bearish') > -1) return 'ms-bear';
+  if (v.indexOf('Ranging') > -1) return 'ms-rang';
+  return 'ms-neu';
+}
+function crClass(v) {
+  if (!v) return '';
+  var n = v[0];
+  return n==='1'?'cr1':n==='2'?'cr2':n==='3'?'cr3':n==='4'?'cr4':'cr5';
+}
+
+/* ── Dropdown builder ── */
+function mkSel(pair, field, opts, cur) {
+  var h = '<select class="sel-c" onchange="setPF(\'' + pair + '\',\'' + field + '\',this.value)"><option value="">—</option>';
+  opts.forEach(function(o){
+    h += '<option value="' + o + '"' + (o === cur ? ' selected' : '') + '>' + o + '</option>';
+  });
+  return h + '</select>';
+}
+function setPF(pair, field, val) {
+  var d = getPair(pair); d[field] = val; savePair(pair, d);
+  saveAll(); renderTable();
+}
+
+/* ══════════════════════════════
+   CHECKLIST INTERACTIONS
+══════════════════════════════ */
+function toggleYN(pair, idx) {
+  var d = getPair(pair);
+  if (!d.checks) d.checks = emptyChecks();
+  var c = d.checks[idx] || '';
+  d.checks[idx] = c === 'Y' ? 'N' : c === 'N' ? '' : 'Y';
+  savePair(pair, d); saveAll();
+  renderTable();
+}
+function togglePrep(pair, idx) {
+  var d = getPair(pair);
+  if (!d.prep) d.prep = emptyPrep();
+  d.prep[idx] = !d.prep[idx];
+  savePair(pair, d); saveAll();
+  renderExpanded(pair); renderPrepGrid();
+}
+function clearScore(pair) {
+  var d = getPair(pair); d.checks = emptyChecks(); savePair(pair, d); saveAll();
+  renderTable(); renderExpanded(pair);
+}
+function clearPrep(pair) {
+  var d = getPair(pair); d.prep = emptyPrep(); savePair(pair, d); saveAll();
+  renderExpanded(pair); renderPrepGrid();
+}
+
+/* ══════════════════════════════
+   EXPANDED ROW — PREP ONLY
+══════════════════════════════ */
+function renderExpanded(pair) {
+  var pid = pair.replace('/','_');
+  var el  = document.getElementById('exp-' + pid);
+  if (!el) return;
+  var d    = getPair(pair);
+  var prep = d.prep || emptyPrep();
+  var done = 0; prep.forEach(function(v){ if (v) done++; });
+  var pct  = Math.round(done / 11 * 100);
+
+  var stepsHtml = '';
+  PREP_STEPS.forEach(function(step, i){
+    var ok = prep[i] || false;
+    stepsHtml += '<div class="ck-item" onclick="togglePrep(\'' + pair + '\',' + i + ')">'
+      + '<div class="ck-num">' + (i+1) + '.</div>'
+      + '<div class="ck-box' + (ok ? ' done' : '') + '">' + (ok ? '<div class="ck-tick"></div>' : '') + '</div>'
+      + '<span class="ck-lbl' + (ok ? ' done' : '') + '">' + step + '</span>'
+      + '</div>';
+  });
+
+  el.innerHTML = '<td colspan="26" style="padding:0"><div class="exp-panel">'
+    + '<div class="ep-top">'
+    +   '<span class="ep-pair">' + pair + ' — analysis prep</span>'
+    +   '<div style="display:flex;align-items:center;gap:10px;margin-left:auto">'
+    +     '<div style="display:flex;align-items:center;gap:7px">'
+    +       '<div class="pb-wrap" style="width:140px"><div class="pb-fill" style="width:' + pct + '%;background:var(--navy)"></div></div>'
+    +       '<span style="font-size:11px;font-weight:600;color:var(--navy);font-family:\'DM Mono\',monospace">' + done + '/11</span>'
+    +     '</div>'
+    +     '<div class="ep-actions">'
+    +       '<button class="clr-btn" onclick="clearScore(\'' + pair + '\')">Clear score</button>'
+    +       '<button class="clr-btn" onclick="clearPrep(\'' + pair + '\')">Clear prep</button>'
+    +     '</div>'
+    +   '</div>'
+    + '</div>'
+    + '<div class="ep-sec">Analysis prep checklist — click to check off each step</div>'
+    + '<div class="prep-grid-exp">' + stepsHtml + '</div>'
+    + '</div></td>';
+}
+
+/* ══════════════════════════════
+   MAIN TABLE RENDER
+══════════════════════════════ */
+function renderTable() {
+  var tbody = document.getElementById('pairs-tbody');
+  if (!tbody) return;
+  var s    = getSettings();
+  var html = '';
+
+  GROUPS.forEach(function(grp){
+    html += '<tr class="grp-row"><td colspan="26">' + grp.label + '</td></tr>';
+
+    grp.pairs.forEach(function(pair){
+      var pid    = pair.replace('/','_');
+      var d      = getPair(pair);
+      var checks = d.checks || emptyChecks();
+      var prep   = d.prep   || emptyPrep();
+      var hasAny = false;
+      checks.forEach(function(c){ if (c === 'Y') hasAny = true; });
+      var score = calcScore(checks);
+      var gi    = gradeInfo(score, hasAny);
+      var done  = 0; prep.forEach(function(v){ if (v) done++; });
+      var isExp = expandedPair === pair;
+
+      /* Y/N button cells */
+      var yns = '';
+      for (var i = 0; i < 16; i++) {
+        var isP = i >= 12;
+        var v   = checks[i] || '';
+        var cls = 'yn' + (v==='Y'?(isP?' yp':' y'):v==='N'?' n':'');
+        yns += '<td style="padding:3px 5px"><button class="' + cls + '" onclick="toggleYN(\'' + pair + '\',' + i + ')">' + (v||'·') + '</button></td>';
+      }
+
+      var sc = hasAny
+        ? '<span class="' + scoreClass(score, hasAny) + '">' + score + '</span>'
+        : '<span class="sc-nil">—</span>';
+
+      var posCls = posClass(d.position||'');
+      var otCls  = otClass(d.ot||'');
+      var msCls  = msClass(d.ms||'');
+      var crCls  = crClass(d.cr||'');
+
+      html += '<tr id="row-' + pid + '">'
+        + '<td><button class="ebtn' + (isExp?' open':'') + '" id="ebtn-' + pid + '" onclick="toggleRow(\'' + pair + '\')">' + (isExp?'▼':'▶') + '</button></td>'
+        + '<td class="tdl" style="font-weight:600">' + pair + '</td>'
+        + '<td class="tdl ' + posCls + '">' + mkSel(pair, 'position', s.pos, d.position||'') + '</td>'
+        + '<td class="' + otCls + '">'  + mkSel(pair, 'ot',  s.ot, d.ot||'')       + '</td>'
+        + '<td class="tdl ' + msCls + '">' + mkSel(pair, 'ms', s.ms, d.ms||'')     + '</td>'
+        + '<td class="' + crCls + '">'  + mkSel(pair, 'cr',  s.cr, d.cr||'')       + '</td>'
+        + yns
+        + '<td>' + sc + '</td>'
+        + '<td><span class="grade ' + gi.cls + '">' + gi.lbl + '</span></td>'
+        + '<td><span style="font-size:11px;font-weight:500;color:' + (done>0?'var(--navy)':'var(--text3)') + ';font-family:\'DM Mono\',monospace">' + done + '/11</span></td>'
+        + '</tr>'
+        + '<tr id="exp-' + pid + '"><td colspan="26" style="padding:0"></td></tr>';
+    });
+  });
+
+  tbody.innerHTML = html;
+  if (expandedPair) renderExpanded(expandedPair);
+}
+
+function toggleRow(pair) {
+  var pid = pair.replace('/','_');
+  if (expandedPair === pair) {
+    expandedPair = null;
+    var el = document.getElementById('exp-' + pid);
+    if (el) el.innerHTML = '<td colspan="26" style="padding:0"></td>';
+    var btn = document.getElementById('ebtn-' + pid);
+    if (btn) { btn.textContent = '▶'; btn.classList.remove('open'); }
+  } else {
+    if (expandedPair) {
+      var pp  = expandedPair.replace('/','_');
+      var pe  = document.getElementById('exp-' + pp);
+      if (pe) pe.innerHTML = '<td colspan="26" style="padding:0"></td>';
+      var pb  = document.getElementById('ebtn-' + pp);
+      if (pb) { pb.textContent = '▶'; pb.classList.remove('open'); }
+    }
+    expandedPair = pair;
+    var btn2 = document.getElementById('ebtn-' + pid);
+    if (btn2) { btn2.textContent = '▼'; btn2.classList.add('open'); }
+    renderExpanded(pair);
+  }
+}
+
+/* ══════════════════════════════
+   FILTERS
+══════════════════════════════ */
+function applyFilters() {
+  var gradeVal = (document.getElementById('filter-grade') ||{}).value || '';
+  var otVal    = (document.getElementById('filter-ot')    ||{}).value || '';
+  var blockVal = (document.getElementById('filter-block') ||{}).value || '';
+
+  var currentBlock = '';
+  document.querySelectorAll('#pairs-tbody tr').forEach(function(row){
+    if (row.classList.contains('grp-row')) {
+      var td = row.querySelector('td');
+      currentBlock = td ? td.textContent.trim() : '';
+      row.style.display = (!blockVal || currentBlock === blockVal) ? '' : 'none';
+      return;
+    }
+    if (!row.id || row.id.indexOf('exp-') === 0) return;
+
+    var blockPass = !blockVal || currentBlock === blockVal;
+
+    var gradePass = true;
+    if (gradeVal) {
+      var g   = row.querySelector('.grade');
+      var lbl = g ? g.textContent : '';
+      gradePass = gradeVal==='ap' ? lbl.indexOf('A+')===0
+                : gradeVal==='a'  ? (lbl.indexOf('A+')===0 || lbl.indexOf('A –')===0)
+                :                    lbl !== 'No trade' && lbl !== '—';
+    }
+
+    var otPass = true;
+    if (otVal) {
+      var pCell = row.querySelector('td[style*="font-weight:600"]');
+      if (pCell) {
+        var pd = getPair(pCell.textContent.trim());
+        otPass = (pd.ot || '') === otVal;
+      }
+    }
+
+    row.style.display = (blockPass && gradePass && otPass) ? '' : 'none';
+  });
+}
+
+/* ══════════════════════════════
+   ANALYSIS PREP GRID
+══════════════════════════════ */
+function renderPrepGrid() {
+  var g = document.getElementById('prep-grid');
+  if (!g) return;
+  var html = '';
+  ALL_PAIRS.forEach(function(pair){
+    var d    = getPair(pair);
+    var prep = d.prep || emptyPrep();
+    var done = 0; prep.forEach(function(v){ if (v) done++; });
+    var pct  = Math.round(done / 11 * 100);
+    var col  = pct === 100 ? '#1E8449' : pct >= 50 ? '#F39C12' : '#C0392B';
+
+    var steps = '';
+    PREP_STEPS.forEach(function(step, i){
+      var ok = prep[i] || false;
+      steps += '<div class="ck-item" onclick="togglePrep(\'' + pair + '\',' + i + ')" style="background:' + (ok?'rgba(30,132,73,.07)':'rgba(255,255,255,.6)') + '">'
+        + '<div class="ck-num">' + (i+1) + '.</div>'
+        + '<div class="ck-box' + (ok?' done':'') + '" style="width:13px;height:13px">' + (ok?'<div class="ck-tick"></div>':'') + '</div>'
+        + '<span class="ck-lbl' + (ok?' done':'') + '" style="font-size:11px">' + step + '</span>'
+        + '</div>';
+    });
+
+    html += '<div class="prep-card">'
+      + '<div class="prep-card-hdr">'
+      +   '<span class="prep-pair">' + pair + '</span>'
+      +   '<div style="display:flex;align-items:center;gap:6px">'
+      +     '<span style="font-size:11px;font-weight:600;color:' + col + ';font-family:\'DM Mono\',monospace">' + done + '/11</span>'
+      +     '<button class="clr-btn" style="padding:3px 8px;font-size:10.5px" onclick="clearPrep(\'' + pair + '\')">Clear</button>'
+      +   '</div>'
+      + '</div>'
+      + '<div class="pb-wrap" style="margin-bottom:7px"><div class="pb-fill" style="width:' + pct + '%;background:' + col + '"></div></div>'
+      + '<div class="prep-steps">' + steps + '</div>'
+      + '</div>';
+  });
+  g.innerHTML = html;
+}
+
+/* ══════════════════════════════
+   POINTS CONFIG RENDER
+══════════════════════════════ */
+function renderConfigRows() {
+  var p   = getPts();
+  var el  = document.getElementById('cfg-rows');
+  if (!el) return;
+  var html = '';
+  CRITERIA.forEach(function(crit, i){
+    var isP   = crit.pen;
+    var label = isP ? 'P'+(i-11) : 'C'+(i+1);
+    html += '<div class="cfg-crit-row">'
+      + '<span style="' + (isP ? 'color:var(--red);font-weight:500' : '') + '">'
+      +   '<span class="cfg-mono' + (isP?' pen':'') + '">' + label + '</span>'
+      +   ' — ' + CRIT_NAMES[i]
+      + '</span>'
+      + '<div style="display:flex;align-items:center;gap:8px">'
+      +   '<input class="cfg-input" type="number" value="' + p[i] + '" style="max-width:80px;text-align:center" onchange="updatePts(' + i + ',this.value)">'
+      +   '<span style="font-size:12px;color:var(--text3)">' + (isP?'penalty pts':'pts') + '</span>'
+      + '</div>'
+      + '</div>';
+  });
+  el.innerHTML = html;
+}
+function updatePts(idx, val) {
+  var p = getPts(); p[idx] = parseFloat(val) || 0; ls('fx_pts', p); renderTable();
+}
+
+/* ══════════════════════════════
+   EMOTIONAL SCALE
+══════════════════════════════ */
+function buildEmScale() {
+  var track = document.getElementById('em-track');
+  var zbar  = document.getElementById('em-zone-bar');
+  if (!track) return;
+  var html = '';
+  for (var i = 1; i <= 10; i++) {
+    var zone = null;
+    EM_ZONES.forEach(function(z){ if (i >= z.lo && i <= z.hi) zone = z; });
+    var bg = zone ? zone.bg : '#eee';
+    var tc = zone ? zone.tc : '#333';
+    html += '<div class="em-cell' + (i === currentEmotion ? ' active' : '') + '"'
+      + ' id="emc-' + i + '" onclick="setEmotion(' + i + ')"'
+      + ' style="background:' + bg + ';color:' + tc + '">' + i + '</div>';
+  }
+  track.innerHTML = html;
+  if (zbar) {
+    var zh = '';
+    EM_ZONES.forEach(function(z){
+      zh += '<div class="em-zone-lbl" style="flex:' + (z.hi-z.lo+1) + ';color:' + z.tc + '">' + z.label + '</div>';
+    });
+    zbar.innerHTML = zh;
+  }
+}
+function setEmotion(n) {
+  currentEmotion = n;
+  for (var i = 1; i <= 10; i++) {
+    var el = document.getElementById('emc-' + i);
+    if (el) { if (i === n) el.classList.add('active'); else el.classList.remove('active'); }
+  }
+  var zone = null;
+  EM_ZONES.forEach(function(z){ if (n >= z.lo && n <= z.hi) zone = z; });
+  var tb = document.getElementById('tb-em');
+  if (tb && zone) { tb.className = 'em-pill ' + zone.pill; tb.textContent = zone.label + ' (' + n + ')'; }
+  saveAll();
+}
+
+/* ══════════════════════════════
+   WEEK TRACKER
+══════════════════════════════ */
+function renderTrackerDays() {
+  var cont = document.getElementById('tracker-days');
+  if (!cont) return;
+  var t    = getTracker();
+  var html = '';
+  WDAY_LABELS.forEach(function(day, di){
+    var entries = t.days[di] || [];
+    var dots = '';
+    entries.forEach(function(type, ei){
+      dots += '<div class="trade-dot dot-' + type + '" onclick="removeTrade(' + di + ',' + ei + ')" title="Click to remove">'
+        + (type==='win'?'W':type==='loss'?'L':'B') + '</div>';
+    });
+    html += '<div class="tracker-day">'
+      + '<div class="td-lbl">' + day + '</div>'
+      + '<div class="td-entries">' + dots + '</div>'
+      + '<div class="td-add">'
+      +   '<button class="add-btn add-w" onclick="addTrade(' + di + ',\'win\')">W</button>'
+      +   '<button class="add-btn add-l" onclick="addTrade(' + di + ',\'loss\')">L</button>'
+      +   '<button class="add-btn add-b" onclick="addTrade(' + di + ',\'be\')">B</button>'
+      + '</div>'
+      + '</div>';
+  });
+  cont.innerHTML = html;
+  updateTrackerSummary(t);
+}
+function addTrade(di, type) {
+  var t = getTracker();
+  if (!t.days[di]) t.days[di] = [];
+  t.days[di].push(type);
+  saveTracker(t); renderTrackerDays(); saveAll();
+}
+function removeTrade(di, ei) {
+  var t = getTracker();
+  if (t.days[di]) t.days[di].splice(ei, 1);
+  saveTracker(t); renderTrackerDays(); saveAll();
+}
+function clearTracker() {
+  saveTracker({ days:[[],[],[],[],[]] }); renderTrackerDays(); saveAll();
+}
+function updateTrackerSummary(t) {
+  var wins=0, losses=0, be=0;
+  t.days.forEach(function(d){ d.forEach(function(e){ if(e==='win')wins++; else if(e==='loss')losses++; else be++; }); });
+  var total = wins + losses + be;
+  function set(id,v){ var el=document.getElementById(id); if(el) el.textContent=v; }
+  set('ts-w',wins); set('ts-l',losses); set('ts-b',be); set('ts-t',total);
+  set('ts-wr', total>0 ? Math.round(wins/total*100)+'%' : '—');
+  /* Consecutive loss warning */
+  var allTrades = [];
+  t.days.forEach(function(d){ d.forEach(function(e){ allTrades.push(e); }); });
+  var maxConsec=0, cur=0;
+  allTrades.forEach(function(e){ if(e==='loss'){cur++;if(cur>maxConsec)maxConsec=cur;}else cur=0; });
+  var warn = document.getElementById('consec-warn');
+  if (warn) {
+    if (maxConsec >= 2) { warn.style.display='block'; warn.textContent='⚠ '+maxConsec+' consecutive losses — review risk scaling'; }
+    else warn.style.display='none';
+  }
+}
+
+/* ══════════════════════════════
+   SESSION DETECTION
+══════════════════════════════ */
+function detectSession() {
+  if (sessionOverride) return sessionOverride;
+  try {
+    var now  = new Date();
+    var aest = new Date(now.toLocaleString('en-AU',{timeZone:'Australia/Sydney'}));
+    var mins = aest.getHours()*60 + aest.getMinutes();
+    for (var i=0; i<SESSIONS.length; i++) {
+      var s = SESSIONS[i];
+      if (s.s < s.e) { if (mins>=s.s && mins<s.e) return s; }
+      else            { if (mins>=s.s || mins<s.e) return s; }
+    }
+  } catch(e) {}
+  return { n:'Off Hours', p:'sp-gray' };
+}
+function overrideSession(val) {
+  if (!val) { sessionOverride=null; }
+  else {
+    var found=null;
+    SESSIONS.forEach(function(s){ if(s.n===val) found=s; });
+    sessionOverride = found || { n:val, p:'sp-gray' };
+  }
+  updateSessionDisplay();
+}
+function updateSessionDisplay() {
+  var s = detectSession();
+  var el = document.getElementById('sess-pill');
+  if (el) { el.className='sess-pill '+(s.p||'sp-gray'); el.textContent=s.n; }
+}
+function updateClock() {
+  try {
+    var now  = new Date();
+    var aest = new Date(now.toLocaleString('en-AU',{timeZone:'Australia/Sydney'}));
+    var el   = document.getElementById('clock-el');
+    if (el) el.textContent = aest.toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+' AEST';
+    updateSessionDisplay();
+  } catch(e) {}
+}
+
+/* ══════════════════════════════
+   RISK MANAGER
+══════════════════════════════ */
+function updateRisk() {
+  var bal = parseFloat((document.getElementById('ri-bal')||{}).value) || 9000;
+  var rp  = parseFloat((document.getElementById('ri-rp') ||{}).value) || 0.5;
+  var mdd = parseFloat((document.getElementById('ri-mdd')||{}).value) || 3;
+  var cdd = parseFloat((document.getElementById('ri-cdd')||{}).value) || 0;
+  var dr  = Math.round(bal * rp / 100);
+  var rdd = Math.max(0, Math.round(bal*mdd/100 - cdd));
+  function set(id,v){ var el=document.getElementById(id); if(el) el.textContent=v; }
+  set('ri-dr',  '$'+dr);
+  set('ri-rdd', '$'+rdd);
+  set('ri-wtl', '$'+Math.round(bal*0.015));
+  set('ri-wth', '$'+Math.round(bal*0.025));
+  set('ri-mtl', '$'+Math.round(bal*0.06));
+  set('ri-mth', '$'+Math.round(bal*0.08));
+  set('s-bal',  '$'+bal.toLocaleString());
+  set('s-risk', '$'+dr);
+  set('s-dd',   '$'+rdd);
+  set('tb-bal', '$'+bal.toLocaleString());
+  set('tb-risk','$'+dr+'/trade');
+}
+
+/* ══════════════════════════════
+   WEEKLY P&L
+══════════════════════════════ */
+function updateWeekly() {
+  var total = 0;
+  WDAYS.forEach(function(d){
+    var v  = parseFloat((document.getElementById('wi-'+d)||{}).value) || 0;
+    total += v;
+    var el = document.getElementById('wd-'+d);
+    if (el) { el.textContent=v?(v>0?'+$'+v:'-$'+Math.abs(v)):'—'; el.style.color=v>0?'var(--green)':v<0?'var(--red)':'var(--text1)'; }
+  });
+  var bal = parseFloat((document.getElementById('ri-bal')||{}).value) || 9000;
+  var hi  = Math.round(bal*0.025), lo = Math.round(bal*0.015);
+  function set(id,v,col){ var el=document.getElementById(id); if(el){el.textContent=v;if(col)el.style.color=col;} }
+  set('wk-tot',(total>=0?'+$':'-$')+Math.abs(Math.round(total)), total>=0?'var(--green)':'var(--red)');
+  set('wk-pct',(total/bal*100).toFixed(2)+'%');
+  set('wk-vs', total>=hi?'On target':total>=lo?'In range':'Below target', total>=lo?'var(--green)':'var(--red)');
+  set('s-pnl', (total>=0?'+$':'-$')+Math.abs(Math.round(total)), total>=0?'var(--green)':'var(--red)');
+  saveAll();
+}
+
+/* ══════════════════════════════
+   TAB SWITCHING
+══════════════════════════════ */
+function showTab(id, el) {
+  document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('on'); });
+  document.querySelectorAll('.nav-tab').forEach(function(t){ t.classList.remove('on'); });
+  document.getElementById('panel-'+id).classList.add('on');
+  el.classList.add('on');
+  if (id === 'prep')   renderPrepGrid();
+  if (id === 'config') renderConfigRows();
+}
+
+/* ══════════════════════════════
+   RESTORE ALL PERSISTED STATE
+══════════════════════════════ */
+function restoreState() {
+  var st = getState();
+  /* Emotional scale */
+  setEmotion(st.emotion || 5);
+  /* Risk manager inputs */
+  ['ri-bal','ri-rp','ri-mdd','ri-cdd','ri-cl'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el && st[id]) el.value = st[id];
+  });
+  /* Weekly P&L inputs */
+  WDAYS.forEach(function(d){
+    var el = document.getElementById('wi-'+d);
+    if (el && st['w_'+d]) el.value = st['w_'+d];
+  });
+  /* Week notes */
+  var wn = document.getElementById('wk-notes');
+  if (wn && st.notes) wn.value = st.notes;
+  updateRisk();
+  updateWeekly();
+}
+
+/* ══════════════════════════════
+   INITIALISE
+══════════════════════════════ */
+loadSettingsUI();
+buildEmScale();
+restoreState();
+renderTable();
+renderConfigRows();
+renderTrackerDays();
+setInterval(updateClock, 1000);
+updateClock();
+</script>
+</body>
+</html>
