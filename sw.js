@@ -4,8 +4,8 @@
 //   https://mithjones.github.io/fx-trading-mcj/sw.js
 //
 // SET THIS to the same key used everywhere else:
-var MCJ_API_KEY = "REPLACE_WITH_YOUR_MCJ_API_KEY";
-var MCJ_WORKER  = "https://fx-proxy.mithila-wakista.workers.dev";
+var WORKER = "https://fx-proxy.mwwakista.workers.dev";
+var API_KEY = "xk29LqPz84mNwRt7";   // ← your actual random string, not this example
 var MCJ_APP     = "/fx-trading-mcj/";
 
 self.addEventListener("install", function () { self.skipWaiting(); });
