@@ -15,9 +15,9 @@
  *   put Cloudflare Access in front of the Suite instead of relying on this.
  */
 
-const MCJ_WORKER = "https://fx-proxy.mithila-wakista.workers.dev";
-const MCJ_API_KEY = "REPLACE_WITH_YOUR_MCJ_API_KEY";
-const MCJ_VAPID_PUBLIC = "REPLACE_WITH_YOUR_VAPID_PUBLIC_KEY";
+const MCJ_WORKER = "https://fx-proxy.mwwakista.workers.dev";
+const MCJ_API_KEY = "xk29LqPz84mNwRt7";
+const MCJ_VAPID_PUBLIC = "paste your VAPID public key here";
 const MCJ_POLL_MS = 60000;
 const MCJ_SW_PATH = "/fx-trading-mcj/sw.js"; // project-page path, not site root
 
