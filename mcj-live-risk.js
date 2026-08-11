@@ -550,14 +550,30 @@
       h += '<div style="opacity:.5">No trades recorded yet.</div>';
     } else {
       h += '<table style="width:100%;border-collapse:collapse;font-size:11.5px">' +
-        '<tr style="text-align:left;opacity:.55"><th>Pair</th><th>Dir</th><th>R</th><th>P&L</th><th>Setup</th></tr>';
+        '<tr style="text-align:left;opacity:.55"><th>Pair</th><th>Dir</th><th>R</th><th>P&L</th><th style="width:45%">Conditions at entry</th></tr>';
       TRADES.slice(0, 25).forEach(function (t) {
         var r = t.r_multiple;
         var rCol = r === null || r === undefined ? "#475569" : r > 0.05 ? "#166534" : r < -0.05 ? "#B91C1C" : "#B45309";
         var ctx = t.context;
-        var setup = ctx
-          ? (ctx.grade || "?") + (ctx.position ? " · " + shortPos(ctx.position) : "")
-          : '<span style="opacity:.45">not scored</span>';
+        var setup;
+        if (!ctx) {
+          setup = '<span style="opacity:.45">not scored</span>';
+        } else {
+          // Show the actual conditions, not just a letter - the whole point of
+          // journaling is being able to see WHY the trade was taken.
+          var bits = [];
+          if (ctx.grade) bits.push('<b>' + esc(ctx.grade) + '</b>' +
+            (typeof ctx.checklist_score === "number" ? " (" + ctx.checklist_score + ")" : ""));
+          if (ctx.d1struct || ctx.h4struct)
+            bits.push("D1 " + esc(ctx.d1struct || "?") + " / H4 " + esc(ctx.h4struct || "?"));
+          if (ctx.h4choch) bits.push("H4 " + esc(shortChoch(ctx.h4choch)));
+          if (ctx.m15dir) bits.push("M15 " + esc(shortM15(ctx.m15dir)));
+          if (ctx.position) bits.push(esc(shortPos(ctx.position)));
+          if (ctx.zone && typeof ctx.zone.zds === "number")
+            bits.push("zone " + (ctx.zone.zds + (ctx.zone.zfi || 0) + (ctx.zone.zsa || 0)));
+          setup = '<div style="line-height:1.45">' + bits.join('<br><span style="opacity:.6">') +
+                  (bits.length > 1 ? '</span>' : '') + '</div>';
+        }
         h += '<tr style="border-top:1px solid #EEF1F5">' +
           '<td style="padding:4px 0">' + esc(t.symbol) + (t.closed ? "" : ' <span style="color:#B45309">open</span>') + '</td>' +
           '<td>' + esc(t.direction) + '</td>' +
@@ -572,6 +588,18 @@
   }
 
   window.mcjCloseActivity = function () { PANEL_OPEN = false; renderPanel(); };
+
+  function shortChoch(c) {
+    return { bull_no_choch: "no CHoCH", bear_no_choch: "no CHoCH",
+             bull_break_above: "break above", bear_break_below: "break below",
+             pending: "pending" }[c] || c;
+  }
+
+  function shortM15(m) {
+    return { bullish: "bullish", bullish_bos: "bullish BOS",
+             bearish: "bearish", bearish_bos: "bearish BOS",
+             neutral: "neutral" }[m] || m;
+  }
 
   function shortPos(p) {
     return { long_d1_h4: "D1+H4 long", short_d1_h4: "D1+H4 short", long_h4_only: "H4 long",
