@@ -16,7 +16,7 @@
  */
 
 const MCJ_WORKER = "https://fx-proxy.mwwakista.workers.dev";
-const MCJ_API_KEY = "xk29LqPz84mNwRt7";
+const MCJ_API_KEY = "mcj-trading-secret-8271-kj";
 const MCJ_VAPID_PUBLIC = "BO35Ge3eNx-SL4Rn02YUQNXFB_wLSOguVeY8DAsBAOWcmYhCCA7GF_AHSDGdu5vSAl9TiKHclnVYVHm4aH3wKtY";
 const MCJ_POLL_MS = 60000;
 const MCJ_SW_PATH = "/fx-trading-mcj/sw.js"; // project-page path, not site root
