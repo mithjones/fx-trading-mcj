@@ -24,8 +24,8 @@
   "use strict";
 
   // ─────────── CONFIG ───────────
-  var WORKER = "https://fx-proxy.mithila-wakista.workers.dev";
-  var API_KEY = "REPLACE_WITH_YOUR_MCJ_API_KEY";
+var WORKER = "https://fx-proxy.mwwakista.workers.dev";
+var API_KEY = "your actual random string";
   var POLL_MS = 60000;
 
   var LIVE = null;          // latest risk payload from the Worker
