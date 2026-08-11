@@ -24,8 +24,8 @@
 (function () {
   "use strict";
 
-  var WORKER = "https://fx-proxy.mithila-wakista.workers.dev";
-  var API_KEY = "REPLACE_WITH_YOUR_MCJ_API_KEY";
+var WORKER = "https://fx-proxy.mwwakista.workers.dev";
+var API_KEY = "xk29LqPz84mNwRt7";   // ← your actual random string, not this example
   var POLL_MS = 120000;
   var LS_KEY = "mcj_mo_stage_v1";     // queue survives reloads
   var LS_DONE = "mcj_mo_stage_done";  // tickets already committed or dismissed
