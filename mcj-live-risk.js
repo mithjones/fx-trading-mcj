@@ -25,7 +25,7 @@
 
   // ─────────── CONFIG ───────────
 var WORKER = "https://fx-proxy.mwwakista.workers.dev";
-var API_KEY = "your actual random string";
+var API_KEY = "mcj-trading-secret-8271-kj";
   var POLL_MS = 60000;
 
   var LIVE = null;          // latest risk payload from the Worker
