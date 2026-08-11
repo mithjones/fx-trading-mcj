@@ -24,9 +24,9 @@
 (function () {
   "use strict";
 
-var WORKER = "https://fx-proxy.mwwakista.workers.dev";
-var API_KEY = "mcj-trading-secret-8271-kj";
-  var POLL_MS = 120000;
+  var WORKER = "https://fx-proxy.mwwakista.workers.dev";
+  var API_KEY = "mcj-trading-secret-8271-kj";
+  var POLL_MS = 300000;  // 5 min - KV quota friendly
   var LS_KEY = "mcj_mo_stage_v1";     // queue survives reloads
   var LS_DONE = "mcj_mo_stage_done";  // tickets already committed or dismissed
 
