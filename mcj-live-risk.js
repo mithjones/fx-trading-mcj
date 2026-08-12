@@ -751,3 +751,593 @@
     boot();
   }
 })();
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   MCJ EXECUTIONS TAB  —  step 5 of the Executions build
+   ══════════════════════════════════════════════════════════════════════
+
+   Adds a fourth top-level tab ("Executions") to the right of Journal, and
+   renders the trade log returned by the Worker's GET /executions endpoint.
+
+   ADDITIVE, like the rest of this file: it injects its own button, its own
+   panel and its own styles at runtime, and wraps suiteSwitch() rather than
+   editing it. Nothing inside MCJ_Trading_Suite.html needs to change.
+
+   FILTER PRESETS (per handover step 5)
+     Last week / This week ..... Monday-Saturday, Melbourne
+     Current month / Last month  calendar months, Melbourne
+     Last 3 months ............. 1st of the month two months back -> today
+     Custom .................... two date pickers
+     Default ................... Current month
+
+   All date maths is done on MELBOURNE calendar dates and handed to the
+   Worker as YYYY-MM-DD; the Worker does the GMT+3 -> Melbourne conversion
+   on entry_time before comparing, so a 22:30Z fill lands on the right day.
+────────────────────────────────────────────────────────────────────────── */
+
+(function () {
+  "use strict";
+
+  var WORKER = "https://fx-proxy.mwwakista.workers.dev";
+  var API_KEY = "mcj-trading-secret-8271-kj";
+  var MEL = "Australia/Melbourne";
+
+  var STATE = { preset: "month", from: null, to: null, trades: [], loading: false, err: null, open: {} };
+
+  function hdrs() { return { "Content-Type": "application/json", "X-MCJ-Key": API_KEY }; }
+
+  // ─────────── DATE HELPERS (Melbourne calendar) ───────────
+
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+  function fmtD(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function toDate(s) { var p = String(s).split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function addDays(d, n) { var x = new Date(d.getTime()); x.setDate(x.getDate() + n); return x; }
+
+  /* "Today" must be the Melbourne date even if the browser clock is elsewhere
+     (VPS, travel, or a machine left on UTC), so derive it via Intl rather than
+     trusting the local timezone. */
+  function melToday() {
+    try {
+      return new Intl.DateTimeFormat("en-CA", {
+        timeZone: MEL, year: "numeric", month: "2-digit", day: "2-digit",
+      }).format(new Date());
+    } catch (e) {
+      var n = new Date();
+      return fmtD(n);
+    }
+  }
+
+  /* Week runs Monday-Saturday. Sunday belongs to the week that just ended,
+     which matches how the Week Trade Tracker is laid out (5 trading days
+     plus Saturday), not the ISO week. */
+  function mondayOf(d) {
+    var dow = d.getDay();               // 0 Sun, 1 Mon ... 6 Sat
+    var back = dow === 0 ? 6 : dow - 1; // Sunday -> back to the Monday just gone
+    return addDays(d, -back);
+  }
+
+  function rangeFor(preset) {
+    var today = toDate(melToday());
+    var mon, first;
+
+    if (preset === "thisweek") {
+      mon = mondayOf(today);
+      return { from: fmtD(mon), to: fmtD(addDays(mon, 5)) };
+    }
+    if (preset === "lastweek") {
+      mon = addDays(mondayOf(today), -7);
+      return { from: fmtD(mon), to: fmtD(addDays(mon, 5)) };
+    }
+    if (preset === "month") {
+      first = new Date(today.getFullYear(), today.getMonth(), 1);
+      return { from: fmtD(first), to: fmtD(new Date(today.getFullYear(), today.getMonth() + 1, 0)) };
+    }
+    if (preset === "lastmonth") {
+      first = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      return { from: fmtD(first), to: fmtD(new Date(today.getFullYear(), today.getMonth(), 0)) };
+    }
+    if (preset === "3months") {
+      first = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+      return { from: fmtD(first), to: fmtD(today) };
+    }
+    // custom: keep whatever is already in the pickers
+    return { from: STATE.from, to: STATE.to };
+  }
+
+  function melStamp(iso) {
+    try {
+      return new Date(iso).toLocaleString("en-AU", {
+        timeZone: MEL, day: "2-digit", month: "short",
+        hour: "2-digit", minute: "2-digit", hour12: false,
+      });
+    } catch (e) { return iso || "—"; }
+  }
+
+  function melDateOnly(iso) {
+    try {
+      return new Intl.DateTimeFormat("en-CA", {
+        timeZone: MEL, year: "numeric", month: "2-digit", day: "2-digit",
+      }).format(new Date(iso));
+    } catch (e) { return ""; }
+  }
+
+  // ─────────── SMALL UTILITIES ───────────
+
+  function esc(s) {
+    return String(s === null || s === undefined ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+  function num(v) { return typeof v === "number" && isFinite(v); }
+  function money(v) { return (v >= 0 ? "+" : "-") + "$" + Math.abs(v).toFixed(2); }
+
+  /* Scorer sub-totals arrive as {score,max,display}. Prefer the Suite's own
+     display string when present so the tab never disagrees with the checklist;
+     fall back to score/max only if display is missing. */
+  function subScore(o) {
+    if (!o || typeof o !== "object") return "—";
+    if (o.display) return String(o.display);
+    if (num(o.score)) return o.score + (num(o.max) ? "/" + o.max : "");
+    return "—";
+  }
+
+  function sessionLabel(s) {
+    return { A: "Asian", L: "London", NY: "New York", N: "New York" }[s] || (s || "—");
+  }
+
+  function posLabel(p) {
+    return {
+      long_d1_h4: "D1+H4 long", short_d1_h4: "D1+H4 short",
+      long_h4_only: "H4 long", short_h4_only: "H4 short",
+      long_d1_only: "D1 long", short_d1_only: "D1 short",
+      long_pending: "pending long", short_pending: "pending short",
+      no_position: "none",
+    }[p] || (p || "—");
+  }
+
+  // ─────────── STYLES ───────────
+
+  function injectStyles() {
+    if (document.getElementById("mcj-exec-css")) return;
+    var css = document.createElement("style");
+    css.id = "mcj-exec-css";
+    css.textContent = [
+      "#exec-app{display:none;font-family:var(--fb,system-ui,sans-serif);background:var(--bg,#f5f3ef);",
+      "  color:var(--text,#0f0e0d);min-height:calc(100vh - 38px);font-size:15px;line-height:1.5}",
+      "#exec-app.on{display:block}",
+      "#exec-app *{box-sizing:border-box}",
+      "#exec-app .xw{max-width:1400px;margin:0 auto;padding:18px 16px}",
+      "#exec-app .xhdr{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}",
+      "#exec-app .xtitle{font-family:var(--fm,monospace);font-size:19px;font-weight:700}",
+      "#exec-app .xsub{font-size:12.5px;color:var(--text3,#7a7872);font-family:var(--fm,monospace)}",
+      "#exec-app .xbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:16px;",
+      "  padding:12px 15px;background:var(--surface,#fff);border:2px solid var(--border,#ccc9c0);border-radius:var(--r,8px)}",
+      "#exec-app .xlbl{font-size:11.5px;font-weight:700;color:var(--text3,#7a7872);text-transform:uppercase;letter-spacing:.5px}",
+      "#exec-app .xp{padding:5px 13px;border-radius:20px;border:1.5px solid var(--border,#ccc9c0);",
+      "  background:var(--surface2,#edeae4);cursor:pointer;font-size:12.5px;font-weight:500;",
+      "  color:var(--text2,#3d3b38);font-family:inherit;transition:all .12s}",
+      "#exec-app .xp:hover{border-color:var(--border2,#a8a49a);color:var(--text,#0f0e0d)}",
+      "#exec-app .xp.on{background:var(--text,#0f0e0d);border-color:var(--text,#0f0e0d);color:var(--surface,#fff)}",
+      "#exec-app .xdt{padding:5px 9px;border:2px solid var(--border,#ccc9c0);border-radius:var(--r,8px);",
+      "  font-size:12.5px;font-family:var(--fm,monospace);background:var(--surface,#fff);color:var(--text,#0f0e0d)}",
+      "#exec-app .xbtn{padding:6px 15px;border-radius:var(--r,8px);border:2px solid var(--border,#ccc9c0);",
+      "  background:var(--surface,#fff);cursor:pointer;font-size:12.5px;font-weight:600;font-family:inherit}",
+      "#exec-app .xbtn:hover{background:var(--surface2,#edeae4)}",
+      "#exec-app .xbtn.pri{background:var(--accent,#1a6b48);border-color:var(--accent,#1a6b48);color:#fff}",
+      "#exec-app .xrange{margin-left:auto;font-size:12px;font-family:var(--fm,monospace);color:var(--text3,#7a7872)}",
+      "#exec-app .xcards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:16px}",
+      "#exec-app .xc{background:var(--surface,#fff);border:2px solid var(--border,#ccc9c0);",
+      "  border-radius:var(--r,8px);padding:12px 14px}",
+      "#exec-app .xcl{font-size:12px;color:var(--text2,#3d3b38);margin-bottom:3px}",
+      "#exec-app .xcv{font-size:23px;font-weight:700;font-family:var(--fm,monospace)}",
+      "#exec-app .xcs{font-size:11.5px;color:var(--text3,#7a7872);margin-top:2px}",
+      "#exec-app .xtwrap{overflow-x:auto;border:2px solid var(--border2,#a8a49a);border-radius:var(--rl,12px);",
+      "  background:var(--surface,#fff)}",
+      "#exec-app table.xt{border-collapse:collapse;width:100%;min-width:1080px}",
+      "#exec-app .xt thead th{background:var(--surface2,#edeae4);padding:8px 9px;font-size:11px;font-weight:700;",
+      "  color:var(--text3,#7a7872);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;",
+      "  text-align:left;border-bottom:2px solid var(--border2,#a8a49a)}",
+      "#exec-app .xt td{padding:8px 9px;border-bottom:1px solid var(--border,#ccc9c0);font-size:13px;white-space:nowrap}",
+      "#exec-app .xt tr.xrow{cursor:pointer}",
+      "#exec-app .xt tr.xrow:hover td{background:#faf9f6}",
+      "#exec-app .xt .mono{font-family:var(--fm,monospace)}",
+      "#exec-app .xpill{display:inline-block;padding:1px 8px;border-radius:20px;font-size:11.5px;",
+      "  font-weight:700;font-family:var(--fm,monospace);border:1.5px solid}",
+      "#exec-app .g-A{background:#dcfce7;color:#166534;border-color:#86efac}",
+      "#exec-app .g-B{background:#dbeafe;color:#1e3a8a;border-color:#93c5fd}",
+      "#exec-app .g-C{background:#fef3c7;color:#92400e;border-color:#fcd34d}",
+      "#exec-app .g-F{background:#fee2e2;color:#991b1b;border-color:#fca5a5}",
+      "#exec-app .g-none{background:var(--surface2,#edeae4);color:var(--text3,#7a7872);border-color:var(--border,#ccc9c0)}",
+      "#exec-app .dir-long{color:#166534;font-weight:700}",
+      "#exec-app .dir-short{color:#991b1b;font-weight:700}",
+      "#exec-app .pos{color:#166534;font-weight:700}",
+      "#exec-app .neg{color:#991b1b;font-weight:700}",
+      "#exec-app .flat{color:#92400e;font-weight:700}",
+      "#exec-app .xopen{font-size:11px;padding:1px 7px;border-radius:20px;background:#fef3c7;",
+      "  color:#92400e;border:1.5px solid #fcd34d;font-weight:700}",
+      "#exec-app .xflag{font-size:11px;padding:1px 7px;border-radius:20px;font-weight:700;margin-left:4px}",
+      "#exec-app .xflag.af{background:#fee2e2;color:#991b1b}",
+      "#exec-app .xflag.am{background:#fef3c7;color:#92400e}",
+      "#exec-app tr.xdet td{background:#faf9f6;padding:0;border-bottom:2px solid var(--border,#ccc9c0)}",
+      "#exec-app .xdbox{padding:14px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}",
+      "#exec-app .xdsec h4{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;",
+      "  color:var(--text3,#7a7872);margin:0 0 6px;font-weight:700}",
+      "#exec-app .xdr{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;padding:2px 0}",
+      "#exec-app .xdr span:first-child{color:var(--text2,#3d3b38)}",
+      "#exec-app .xdr span:last-child{font-family:var(--fm,monospace);font-weight:600;text-align:right}",
+      "#exec-app .xempty{padding:40px 20px;text-align:center;color:var(--text3,#7a7872);font-size:14px}",
+      "#exec-app .xerr{padding:14px 16px;background:#fee2e2;border:2px solid #fca5a5;color:#991b1b;",
+      "  border-radius:var(--r,8px);font-size:13.5px;margin-bottom:14px}",
+      "@media(max-width:900px){#exec-app .xcards{grid-template-columns:repeat(2,minmax(0,1fr))}}",
+    ].join("");
+    document.head.appendChild(css);
+  }
+
+  // ─────────── TAB WIRING ───────────
+
+  function injectTab() {
+    var sw = document.getElementById("suite-switch");
+    if (!sw || document.getElementById("ss-exec")) return;
+
+    var btn = document.createElement("button");
+    btn.id = "ss-exec";
+    btn.textContent = "Executions";
+    btn.onclick = function () { suiteSwitch("exec"); };
+
+    // Sit immediately to the right of Journal, before the spacer.
+    var journal = document.getElementById("ss-journal");
+    if (journal && journal.nextSibling) sw.insertBefore(btn, journal.nextSibling);
+    else sw.appendChild(btn);
+
+    var panel = document.getElementById("exec-app");
+    if (!panel) {
+      panel = document.createElement("div");
+      panel.id = "exec-app";
+      panel.innerHTML = '<div class="xw">' +
+        '<div class="xhdr"><div class="xtitle">Executions</div>' +
+        '<div class="xsub" id="x-sub">trade log \u00b7 Melbourne dates</div></div>' +
+        '<div id="x-bar"></div><div id="x-err"></div>' +
+        '<div id="x-cards"></div><div id="x-body"></div></div>';
+      // Sits alongside the other top-level panels, after journal-app.
+      var jApp = document.getElementById("journal-app");
+      if (jApp && jApp.parentNode) jApp.parentNode.insertBefore(panel, jApp.nextSibling);
+      else document.body.appendChild(panel);
+    }
+
+    /* Wrap rather than replace: the original handles fx/mo/journal and their
+       lazy re-renders. Calling it with 'exec' correctly turns all three off,
+       then we switch ours on. */
+    var orig = window.suiteSwitch;
+    window.suiteSwitch = function (which) {
+      if (typeof orig === "function") {
+        try { orig.apply(this, arguments); } catch (e) { console.warn("suiteSwitch:", e); }
+      }
+      var app = document.getElementById("exec-app");
+      var b = document.getElementById("ss-exec");
+      if (app) app.classList.toggle("on", which === "exec");
+      if (b) b.classList.toggle("on", which === "exec");
+      if (which === "exec") load();
+    };
+  }
+
+  // ─────────── FILTER BAR ───────────
+
+  var PRESETS = [
+    ["lastweek", "Last week"], ["thisweek", "This week"],
+    ["month", "Current month"], ["lastmonth", "Last month"],
+    ["3months", "Last 3 months"], ["custom", "Custom"],
+  ];
+
+  function renderBar() {
+    var el = document.getElementById("x-bar");
+    if (!el) return;
+    var h = '<div class="xbar"><span class="xlbl">Period</span>';
+    PRESETS.forEach(function (p) {
+      h += '<button class="xp' + (STATE.preset === p[0] ? " on" : "") +
+        '" onclick="mcjExecPreset(\'' + p[0] + '\')">' + esc(p[1]) + "</button>";
+    });
+    if (STATE.preset === "custom") {
+      h += '<input type="date" class="xdt" id="x-from" value="' + esc(STATE.from || "") + '">' +
+        '<span style="color:var(--text3)">to</span>' +
+        '<input type="date" class="xdt" id="x-to" value="' + esc(STATE.to || "") + '">' +
+        '<button class="xbtn pri" onclick="mcjExecApplyCustom()">Apply</button>';
+    }
+    h += '<button class="xbtn" onclick="mcjExecReload()" title="Re-fetch from the Worker">\u21bb Refresh</button>';
+    h += '<button class="xbtn" onclick="mcjExecCsv()" title="Download the visible rows as CSV">\u2193 CSV</button>';
+    h += '<span class="xrange" id="x-range"></span></div>';
+    el.innerHTML = h;
+    paintRange();
+  }
+
+  function paintRange() {
+    var el = document.getElementById("x-range");
+    if (!el) return;
+    el.textContent = STATE.loading ? "loading\u2026"
+      : (STATE.from && STATE.to ? STATE.from + "  \u2192  " + STATE.to : "no range set");
+  }
+
+  window.mcjExecPreset = function (p) {
+    STATE.preset = p;
+    if (p !== "custom") {
+      var r = rangeFor(p);
+      STATE.from = r.from; STATE.to = r.to;
+      renderBar(); load();
+    } else {
+      renderBar();
+    }
+  };
+
+  window.mcjExecApplyCustom = function () {
+    var f = document.getElementById("x-from"), t = document.getElementById("x-to");
+    if (!f || !t || !f.value || !t.value) { alert("Pick both a from and a to date."); return; }
+    if (f.value > t.value) { alert("The from date is after the to date."); return; }
+    STATE.from = f.value; STATE.to = t.value;
+    load();
+  };
+
+  window.mcjExecReload = function () { load(); };
+
+  window.mcjExecToggle = function (ticket) {
+    STATE.open[ticket] = !STATE.open[ticket];
+    renderBody();
+  };
+
+  // ─────────── FETCH ───────────
+
+  function load() {
+    if (!STATE.from || !STATE.to) {
+      var r = rangeFor(STATE.preset);
+      STATE.from = r.from; STATE.to = r.to;
+    }
+    STATE.loading = true; STATE.err = null;
+    renderBar(); renderBody();
+
+    var url = WORKER + "/executions?from=" + encodeURIComponent(STATE.from) +
+      "&to=" + encodeURIComponent(STATE.to);
+
+    fetch(url, { headers: hdrs() })
+      .then(function (r) {
+        if (r.status === 401) throw new Error("Unauthorized \u2014 the API key in this file does not match the Worker secret.");
+        if (r.status === 404) throw new Error("404 \u2014 /executions is not routed. Check MCJ_PATHS in the Worker includes \"/executions\".");
+        if (!r.ok) return r.json().then(function (j) {
+          throw new Error("HTTP " + r.status + (j && j.error ? " \u2014 " + j.error : ""));
+        }, function () { throw new Error("HTTP " + r.status); });
+        return r.json();
+      })
+      .then(function (d) {
+        STATE.trades = Array.isArray(d.trades) ? d.trades : [];
+        STATE.scanned = d.scanned;
+        STATE.loading = false;
+        renderBar(); renderCards(); renderBody();
+      })
+      .catch(function (e) {
+        STATE.loading = false; STATE.err = e.message; STATE.trades = [];
+        renderBar(); renderCards(); renderBody();
+      });
+  }
+
+  // ─────────── SUMMARY CARDS ───────────
+
+  function renderCards() {
+    var el = document.getElementById("x-cards");
+    if (!el) return;
+    var t = STATE.trades;
+    if (!t.length) { el.innerHTML = ""; return; }
+
+    var closed = t.filter(function (x) { return x.closed; });
+    var wins = 0, losses = 0, be = 0, pnl = 0, rSum = 0, rN = 0;
+    closed.forEach(function (x) {
+      if (num(x.total_pnl)) pnl += x.total_pnl;
+      if (num(x.r_multiple)) {
+        rSum += x.r_multiple; rN++;
+        if (x.r_multiple > 0.05) wins++;
+        else if (x.r_multiple < -0.05) losses++;
+        else be++;
+      }
+    });
+    var wr = (wins + losses) ? Math.round((wins / (wins + losses)) * 100) : null;
+    var avgR = rN ? rSum / rN : null;
+    var pnlCls = pnl > 0 ? "pos" : pnl < 0 ? "neg" : "flat";
+
+    el.innerHTML = '<div class="xcards">' +
+      card("Trades", t.length, closed.length + " closed \u00b7 " + (t.length - closed.length) + " open") +
+      card("Net P&amp;L", '<span class="' + pnlCls + '">' + money(pnl) + "</span>", "closed trades only") +
+      card("Total R", '<span class="' + (rSum > 0 ? "pos" : rSum < 0 ? "neg" : "flat") + '">' +
+        (rSum >= 0 ? "+" : "") + rSum.toFixed(2) + "R</span>", rN + " scored") +
+      card("Avg R", avgR === null ? "\u2014" : (avgR >= 0 ? "+" : "") + avgR.toFixed(2) + "R",
+        wins + "W / " + losses + "L / " + be + "BE") +
+      card("Win rate", wr === null ? "\u2014" : wr + "%", "excludes breakeven") +
+      "</div>";
+  }
+
+  function card(label, value, sub) {
+    return '<div class="xc"><div class="xcl">' + label + '</div>' +
+      '<div class="xcv">' + value + "</div>" +
+      '<div class="xcs">' + sub + "</div></div>";
+  }
+
+  // ─────────── TABLE ───────────
+
+  function renderBody() {
+    var el = document.getElementById("x-body");
+    var eEl = document.getElementById("x-err");
+    if (!el) return;
+
+    if (eEl) eEl.innerHTML = STATE.err ? '<div class="xerr"><b>Could not load executions.</b><br>' + esc(STATE.err) + "</div>" : "";
+
+    if (STATE.loading) { el.innerHTML = '<div class="xempty">Loading\u2026</div>'; return; }
+    if (STATE.err) { el.innerHTML = ""; return; }
+    if (!STATE.trades.length) {
+      el.innerHTML = '<div class="xempty">No trades opened between ' + esc(STATE.from) +
+        " and " + esc(STATE.to) + ".<br><span style=\"font-size:12.5px\">" +
+        (STATE.scanned !== undefined ? STATE.scanned + " record(s) in the index were scanned." : "") +
+        "</span></div>";
+      return;
+    }
+
+    var h = '<div class="xtwrap"><table class="xt"><thead><tr>' +
+      "<th></th><th>Opened (Mel)</th><th>Pair</th><th>Dir</th><th>Session</th>" +
+      "<th>Grade</th><th>Score</th><th>R:R</th><th>Lots</th><th>Risk</th>" +
+      "<th>P&amp;L</th><th>R</th><th>Ticket</th>" +
+      "</tr></thead><tbody>";
+
+    STATE.trades.forEach(function (t) {
+      var c = t.context || {};
+      var g = c.grade || "";
+      var gc = g.indexOf("A") === 0 ? "g-A" : g === "B" ? "g-B" : g === "C" ? "g-C" : g === "F" ? "g-F" : "g-none";
+      var dir = String(t.direction || "").toLowerCase();
+      var rm = t.r_multiple;
+      var rCls = !num(rm) ? "" : rm > 0.05 ? "pos" : rm < -0.05 ? "neg" : "flat";
+      var pCls = !num(t.total_pnl) ? "" : t.total_pnl > 0 ? "pos" : t.total_pnl < 0 ? "neg" : "flat";
+      var isOpen = STATE.open[t.ticket];
+
+      var flags = "";
+      if (c.auto_fail) flags += '<span class="xflag af">AUTO-FAIL</span>';
+      if (c.amber) flags += '<span class="xflag am">AMBER</span>';
+
+      h += '<tr class="xrow" onclick="mcjExecToggle(\'' + esc(t.ticket) + '\')">' +
+        '<td style="color:var(--text3)">' + (isOpen ? "\u25be" : "\u25b8") + "</td>" +
+        '<td class="mono">' + esc(melStamp(t.entry_time)) + "</td>" +
+        '<td class="mono" style="font-weight:700">' + esc(t.symbol) +
+        (t.closed ? "" : ' <span class="xopen">open</span>') + flags + "</td>" +
+        '<td class="' + (dir.indexOf("buy") === 0 || dir === "long" ? "dir-long" : "dir-short") + '">' +
+        esc(t.direction || "\u2014") + "</td>" +
+        "<td>" + esc(sessionLabel(c.session)) + "</td>" +
+        '<td><span class="xpill ' + gc + '">' + esc(g || "\u2014") + "</span></td>" +
+        '<td class="mono">' + (num(c.checklist_score) ? c.checklist_score +
+          (num(c.checklist_max) ? "/" + c.checklist_max : "") : "\u2014") + "</td>" +
+        '<td class="mono">' + esc(c.rr && (c.rr.display || c.rr.ratio) ? (c.rr.display || c.rr.ratio) : "\u2014") + "</td>" +
+        '<td class="mono">' + (num(t.lot_size) ? t.lot_size.toFixed(2) : "\u2014") + "</td>" +
+        '<td class="mono">' + (num(t.risk_percent) ? t.risk_percent + "%" : "\u2014") + "</td>" +
+        '<td class="mono ' + pCls + '">' + (num(t.total_pnl) && t.closed ? money(t.total_pnl) : "\u2014") + "</td>" +
+        '<td class="mono ' + rCls + '">' + (num(rm) ? (rm >= 0 ? "+" : "") + rm.toFixed(2) + "R" : "\u2014") + "</td>" +
+        '<td class="mono" style="color:var(--text3);font-size:11.5px">' + esc(t.ticket) + "</td>" +
+        "</tr>";
+
+      if (isOpen) h += detailRow(t, c);
+    });
+
+    h += "</tbody></table></div>";
+    el.innerHTML = h;
+  }
+
+  function detailRow(t, c) {
+    var hasCtx = t.context && Object.keys(t.context).length;
+
+    var structure = hasCtx ? [
+      row("D1 structure", c.d1struct), row("H4 structure", c.h4struct),
+      row("D1 CHoCH", c.d1choch), row("H4 CHoCH", c.h4choch),
+      row("M15 direction", c.m15dir), row("Position", posLabel(c.position)),
+      row("Order type", c.order_type),
+    ].join("") : '<div class="xdr"><span>Not scored</span><span>\u2014</span></div>';
+
+    var zone = hasCtx ? [
+      row("Zone level", c.zone_level),
+      row("ZDS", c.zone && c.zone.zds), row("ZFI", c.zone && c.zone.zfi),
+      row("ZSA", c.zone && c.zone.zsa),
+    ].join("") : "";
+
+    var scorer = hasCtx ? [
+      row("Prep", c.prep_display || (num(c.prep_done) ? c.prep_done + (num(c.prep_max) ? "/" + c.prep_max : "") : null)),
+      row("Trend / structure", subScore(c.trend_str)),
+      row("Zone / sweep", subScore(c.zone_sweep)),
+      row("Execution", subScore(c.exec)),
+      row("SL room", subScore(c.sl_room)),
+      row("Penalties", num(c.penalty_total) ? c.penalty_total : null),
+      row("Position size", c.position_size),
+    ].join("") : "";
+
+    var rr = c.rr || {};
+    var execution = [
+      row("Entry price", t.entry_price),
+      row("Original SL", t.original_sl),
+      row("TP", t.tp_price),
+      row("R:R entry", rr.entry), row("R:R stop", rr.stop),
+      row("R:R target", rr.target), row("R:R ratio", rr.display || rr.ratio),
+      row("Exit price", t.exit_price),
+      row("Exit time", t.exit_time ? melStamp(t.exit_time) : null),
+      row("Partials", t.deals && t.deals.length ? t.deals.length + " deal(s)" : null),
+      row("Account", t.account),
+    ].join("");
+
+    /* checklist_saved_at is the stale-attribution guard from the handover:
+       if this is a later date than the trade, the analysis shown was edited
+       after the fill and may not be what was on screen at entry. */
+    var savedWarn = "";
+    if (c.checklist_saved_at) {
+      var sd = melDateOnly(c.checklist_saved_at), td = melDateOnly(t.entry_time);
+      if (sd && td && sd > td) {
+        savedWarn = '<div style="grid-column:1/-1;font-size:12px;padding:8px 10px;background:#fef3c7;' +
+          'border:1.5px solid #fcd34d;border-radius:6px;color:#92400e">' +
+          "Checklist was last saved on " + esc(sd) + ", after this trade opened on " + esc(td) +
+          " \u2014 the analysis above may reflect a later session, not the state at entry.</div>";
+      }
+    }
+
+    return '<tr class="xdet"><td colspan="13"><div class="xdbox">' +
+      '<div class="xdsec"><h4>Structure at entry</h4>' + structure + "</div>" +
+      (zone ? '<div class="xdsec"><h4>Zone</h4>' + zone + "</div>" : "") +
+      (scorer ? '<div class="xdsec"><h4>Checklist breakdown</h4>' + scorer + "</div>" : "") +
+      '<div class="xdsec"><h4>Execution</h4>' + execution + "</div>" +
+      (c.checklist_saved_at ? '<div class="xdsec"><h4>Provenance</h4>' +
+        row("Checklist saved", melStamp(c.checklist_saved_at)) +
+        row("Context stamp", c.timestamp_gmt ? melStamp(c.timestamp_gmt) : null) + "</div>" : "") +
+      savedWarn +
+      "</div></td></tr>";
+  }
+
+  function row(label, val) {
+    if (val === null || val === undefined || val === "") return "";
+    return '<div class="xdr"><span>' + esc(label) + "</span><span>" + esc(val) + "</span></div>";
+  }
+
+  // ─────────── CSV EXPORT ───────────
+
+  window.mcjExecCsv = function () {
+    if (!STATE.trades.length) { alert("Nothing to export for this period."); return; }
+    var cols = ["ticket", "opened_mel", "symbol", "direction", "session", "grade", "checklist_score",
+      "rr", "lots", "risk_pct", "entry", "sl", "tp", "exit", "pnl", "r_multiple", "closed",
+      "position", "d1struct", "h4struct", "d1choch", "h4choch", "m15dir", "order_type",
+      "zds", "zfi", "zsa", "prep", "trend_str", "zone_sweep", "exec", "sl_room",
+      "penalty_total", "auto_fail", "amber", "checklist_saved_at", "account"];
+
+    var lines = [cols.join(",")];
+    STATE.trades.forEach(function (t) {
+      var c = t.context || {}, rr = c.rr || {}, z = c.zone || {};
+      var v = [t.ticket, melStamp(t.entry_time), t.symbol, t.direction, c.session, c.grade,
+        c.checklist_score, rr.display || rr.ratio, t.lot_size, t.risk_percent,
+        t.entry_price, t.original_sl, t.tp_price, t.exit_price, t.total_pnl, t.r_multiple, t.closed,
+        c.position, c.d1struct, c.h4struct, c.d1choch, c.h4choch, c.m15dir, c.order_type,
+        z.zds, z.zfi, z.zsa, c.prep_display, subScore(c.trend_str), subScore(c.zone_sweep),
+        subScore(c.exec), subScore(c.sl_room), c.penalty_total, c.auto_fail, c.amber,
+        c.checklist_saved_at, t.account];
+      lines.push(v.map(function (x) {
+        if (x === null || x === undefined) return "";
+        var s = String(x);
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      }).join(","));
+    });
+
+    var blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "mcj-executions-" + STATE.from + "_to_" + STATE.to + ".csv";
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  };
+
+  // ─────────── BOOT ───────────
+
+  function start() {
+    injectStyles();
+    injectTab();
+    var r = rangeFor("month");          // default period per step 5
+    STATE.from = r.from; STATE.to = r.to;
+    renderBar();
+    console.log("MCJ executions tab active \u2014 default " + STATE.from + " to " + STATE.to);
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+  else start();
+})();

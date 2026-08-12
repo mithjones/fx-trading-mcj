@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="favicon.ico">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MCJ Trading Suite</title>
@@ -1847,7 +1845,6 @@ td.pos-srt select option { background:#fff; color:var(--text1); }
 .streak-num.cold{color:var(--text3);}
 
 /* Admin */
-
 .admin-habit-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--r);margin-bottom:6px;background:var(--white);}
 .admin-habit-inp{flex:1;font-size:13px;padding:4px 8px;border:1px solid var(--border2);border-radius:4px;font-family:inherit;background:var(--white);color:var(--text1);}
 .admin-habit-inp:focus{outline:none;border-color:var(--navy);}
@@ -2121,7 +2118,7 @@ body{padding-top:38px !important}
 </style>
 </head>
 <body>
-<button id="mcj-enable-push">Enable alerts on this device</button>
+
 <div id="suite-switch">
   <span class="ss-brand">MCJ SUITE</span><span id="ss-version" class="ss-ver" title="Build version — check this matches the file you uploaded"></span>
   <button id="ss-fx" class="on" onclick="suiteSwitch('fx')">FX Trading</button>
@@ -3377,7 +3374,7 @@ body{padding-top:38px !important}
    script block, which showed up as a blank pair table and frozen clocks.
    Patching setItem once protects every call site, present and future.
 ══════════════════════════════════════════════════════════════════════ */
-window.MCJ_VERSION = '2026.08.10-a';
+window.MCJ_VERSION = '2026.08.12-exec';
 (function(){
   window.__storageFail = 0;
   window.__storageErr  = null;
@@ -13120,8 +13117,8 @@ function renderCTW(f, tk, weeks){
 })();
 
 </script>
-  <script src="mcj-live-risk.js"></script>
-<script src="mcj-mo-staging.js"></script>
-<script src="suite-risk-panel-v2.js"></script>
+
+<!-- MCJ live risk + Executions tab. Must load AFTER the Suite's own scripts. -->
+<script src="mcj-live-risk.js"></script>
 </body>
 </html>
