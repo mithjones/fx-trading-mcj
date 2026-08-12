@@ -346,7 +346,7 @@
       m15dir: d.m15dir || undefined,
       position: d.position || undefined,
       order_type: d.ot || undefined,     // verified: the Suite stores this as d.ot
-      session: d.session || undefined,
+      session: d.session_radio || undefined,   // the Suite has no `session` key
       zone: d.zone ? { zds: d.zone.zds, zfi: d.zone.zfi, zsa: d.zone.zsa } : undefined,
       checklist_score: score,
       grade: grade,
@@ -402,23 +402,73 @@
     return symbol.length === 6 ? symbol.slice(0, 3) + "/" + symbol.slice(3) : symbol;
   }
 
+  /**
+   * Collects the checklist conditions for a pair, ready to attach to a ticket.
+   *
+   * Field notes:
+   *  - session comes from `session_radio`; the Suite has never stored a plain
+   *    `session` key, so the previous read was always undefined.
+   *  - The five scorer sub-totals live in sectionScores keyed trend/zone/exec/sl
+   *    (maxima 45/22/28/5) with penalties held separately.
+   *  - R:R is in its own localStorage key, `fx_pair_<PAIR>_rr`, not on the pair
+   *    object, so it needs a second read.
+   *  - checklist_saved_at records WHEN the analysis was saved. Attachment reads
+   *    current state, so a fill that lands while the Suite is closed can pick up
+   *    a later day's analysis. Stamping the source date makes that visible in
+   *    the record rather than silently assumed.
+   */
   function buildContext(pair, ticket) {
     if (typeof window.getPair !== "function") return null;
     var d = window.getPair(pair) || {};
 
     var score = null, grade = null, posSize = null, autoFail = null, amber = null;
+    var secTrend = null, secZone = null, secExec = null, secSl = null, penTotal = null, maxScore = null;
     if (typeof window.calculateSetupScore === "function") {
       try {
         var res = window.calculateSetupScore(d.setup, d.zone);
         if (res && res.hasAny) {
-          score = typeof res.total === "number" ? res.total : null;
-          grade = res.grade || null;
-          posSize = res.positionSize || null;
+          score    = typeof res.total === "number" ? res.total : null;
+          grade    = res.grade || null;
+          posSize  = res.positionSize || null;
           autoFail = res.autoFail || null;
-          amber = !!res.amber;
+          amber    = !!res.amber;
+          maxScore = typeof res.maxScore === "number" ? res.maxScore : null;
+          penTotal = typeof res.penaltyTotal === "number" ? res.penaltyTotal : null;
+          var ss = res.sectionScores || {};
+          function sec(k) {
+            var s = ss[k];
+            if (!s || typeof s.score !== "number") return null;
+            return { score: s.score, max: s.max, display: s.score + "/" + s.max };
+          }
+          secTrend = sec("trend");   /* Trend & Structure  /45 */
+          secZone  = sec("zone");    /* Zone & Sweep       /22 */
+          secExec  = sec("exec");    /* Execution          /28 */
+          secSl    = sec("sl");      /* Stop Loss          /5  */
         }
       } catch (e) {}
     }
+
+    /* Prep is an array of 11 booleans; send the count and the raw flags so the
+       table can show "11/11" without re-deriving. */
+    var prepArr = Array.isArray(d.prep) ? d.prep : null;
+    var prepDone = prepArr ? prepArr.filter(Boolean).length : null;
+
+    /* R:R lives in a separate key. */
+    var rr = null;
+    try {
+      var rraw = localStorage.getItem("fx_pair_" + pair + "_rr");
+      if (rraw) {
+        var r = JSON.parse(rraw);
+        if (r && (r.entry || r.stop || r.target)) {
+          rr = { entry: r.entry ?? null, stop: r.stop ?? null, target: r.target ?? null };
+          var e0 = parseFloat(r.entry), s0 = parseFloat(r.stop), t0 = parseFloat(r.target);
+          if (isFinite(e0) && isFinite(s0) && isFinite(t0) && Math.abs(e0 - s0) > 0) {
+            rr.ratio = Math.round(Math.abs(t0 - e0) / Math.abs(e0 - s0) * 100) / 100;
+            rr.display = rr.ratio.toFixed(2) + "R";
+          }
+        }
+      }
+    } catch (e) {}
 
     // Nothing scored and no structure set => no real context to attach.
     var hasAny = d.d1struct || d.h4struct || d.position || score !== null;
@@ -427,21 +477,50 @@
     return {
       ticket: String(ticket),
       symbol: String(pair).replace(/\//g, "").toUpperCase(),
+      pair: pair,
       timestamp_gmt: new Date().toISOString(),
+
+      /* structure */
       d1struct: d.d1struct || undefined,
       h4struct: d.h4struct || undefined,
       d1choch: d.d1choch || undefined,
       h4choch: d.h4choch || undefined,
       m15dir: d.m15dir || undefined,
       position: d.position || undefined,
+      position_label: (typeof window.posLabel === "function" && d.position)
+        ? window.posLabel(d.position) : undefined,
       order_type: d.ot || undefined,
-      session: d.session || undefined,
+      session: d.session_radio || undefined,
+
+      /* prep */
+      prep_done: prepDone,
+      prep_max: prepArr ? prepArr.length : undefined,
+      prep_display: prepArr ? (prepDone + "/" + prepArr.length) : undefined,
+      prep_flags: prepArr || undefined,
+
+      /* zone */
       zone: d.zone ? { zds: d.zone.zds, zfi: d.zone.zfi, zsa: d.zone.zsa } : undefined,
+      zone_level: (d.zone && d.zone.level) || undefined,
+
+      /* scorer */
       checklist_score: score,
+      checklist_max: maxScore,
       grade: grade,
       position_size: posSize,
       auto_fail: autoFail,
       amber: amber,
+      trend_str: secTrend || undefined,
+      zone_sweep: secZone || undefined,
+      exec: secExec || undefined,
+      sl_room: secSl || undefined,
+      penalty_total: penTotal,
+
+      /* R:R */
+      rr: rr || undefined,
+
+      /* provenance */
+      checklist_saved_at: d.setupSavedAt || undefined,
+      attached_from: "current_checklist"
     };
   }
 
