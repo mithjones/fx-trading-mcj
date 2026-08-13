@@ -692,7 +692,7 @@
      repeat clicks instead of stacking duplicates. */
   window.mcjPopAlerts = function () {
     var url = new URL("mcj-alerts.html", window.location.href).href;
-    var w = 440, h = 780;
+    var w = 880, h = 780;
     var left = window.screen.availWidth - w - 20;
     var top = 40;
     window.open(url, "mcjAlertsWindow",

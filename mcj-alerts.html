@@ -26,7 +26,7 @@
 }
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 body {
-  font-family:'DM Sans',system-ui,sans-serif; font-size:14px;
+  font-family:'DM Sans',system-ui,sans-serif; font-size:21px;
   background:var(--bg); color:var(--text1); min-height:100vh;
 }
 
@@ -34,75 +34,120 @@ body {
 #hdr {
   background:linear-gradient(135deg, #1A2744 0%, #243860 100%);
   border-bottom:2px solid #4E9AF1;
-  padding:10px 16px; position:sticky; top:0; z-index:200;
+  padding:15px 21px; position:sticky; top:0; z-index:200;
   box-shadow:0 2px 12px rgba(26,39,68,0.10);
 }
-.hrow { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-.hrow + .hrow { margin-top:8px; }
-.brand { font-family:'DM Mono',monospace; font-weight:700; font-size:14px; color:#fff; letter-spacing:.03em; }
-.dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.hrow { display:flex; align-items:center; gap:15px; flex-wrap:wrap; }
+.hrow + .hrow { margin-top:12px; }
+.brand { font-family:'DM Mono',monospace; font-weight:700; font-size:21px; color:#fff; letter-spacing:.03em; }
+.dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
 .dot.live { background:var(--green); box-shadow:0 0 6px var(--green); }
 .dot.stale { background:var(--amber); }
 .dot.dead { background:var(--red); }
-#status { font-family:'DM Mono',monospace; font-size:11px; color:rgba(255,255,255,.65); }
+#status { font-family:'DM Mono',monospace; font-size:16px; color:rgba(255,255,255,.65); }
 .spacer { margin-left:auto; }
 
 select.hsel {
-  font-size:12.5px; padding:5px 10px; border-radius:var(--r);
+  font-size:18px; padding:7px 14px; border-radius:var(--r);
   border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.08);
   color:#fff; font-family:inherit;
 }
 select.hsel option { color:var(--text1); }
 input.hsym {
-  font-size:12.5px; padding:5px 10px; border-radius:var(--r);
+  font-size:18px; padding:7px 14px; border-radius:var(--r);
   border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.08);
-  color:#fff; font-family:'DM Mono',monospace; width:110px;
+  color:#fff; font-family:'DM Mono',monospace; width:160px;
 }
 input.hsym::placeholder { color:rgba(255,255,255,.5); }
-.toggle { display:flex; align-items:center; gap:5px; font-size:12px; color:rgba(255,255,255,.8); cursor:pointer; user-select:none; }
+.toggle { display:flex; align-items:center; gap:7px; font-size:18px; color:rgba(255,255,255,.8); cursor:pointer; user-select:none; }
 
 /* ── Bulk-action bar (only shows once something is selected) ── */
 #bulkbar {
-  display:none; align-items:center; gap:10px; padding:8px 16px;
+  display:none; align-items:center; gap:14px; padding:12px 21px;
   background:var(--red-bg); border-bottom:2px solid var(--red);
-  font-size:13px; color:var(--red); font-weight:600;
+  font-size:19px; color:var(--red); font-weight:600;
 }
 #bulkbar.on { display:flex; }
 .btn-danger {
-  padding:6px 14px; border-radius:var(--r); border:none; background:var(--red);
-  color:#fff; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit;
+  padding:8px 18px; border-radius:var(--r); border:none; background:var(--red);
+  color:#fff; font-size:18px; font-weight:600; cursor:pointer; font-family:inherit;
 }
 .btn-cancel-sm {
-  padding:6px 14px; border-radius:var(--r); border:1px solid var(--border2);
-  background:var(--white); color:var(--text2); font-size:12.5px; font-weight:600;
+  padding:8px 18px; border-radius:var(--r); border:1px solid var(--border2);
+  background:var(--white); color:var(--text2); font-size:18px; font-weight:600;
   cursor:pointer; font-family:inherit;
 }
 
 /* ── Body ── */
-#wrap { padding:14px 16px 40px; max-width:900px; margin:0 auto; }
+#wrap { padding:21px 21px 50px; max-width:1200px; margin:0 auto; }
+
+/* Live risk status strip - current state, updates every poll regardless of
+   whether anything has actually breached yet. Sits above the fired-alert
+   history so both the "right now" view and the history are visible at once. */
+.risk-status {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:12px;
+  margin-bottom:15px; padding:15px 18px; border-radius:var(--r);
+  background:var(--white); border:1px solid var(--border);
+}
+.risk-status .rs-item .rs-label { font-size:15px; color:var(--text3); }
+.risk-status .rs-item .rs-value { font-size:24px; font-weight:700; color:var(--text1); font-family:'DM Mono',monospace; }
+.risk-status .rs-value.pos { color:var(--green); }
+.risk-status .rs-value.neg { color:var(--red); }
+.risk-status .rs-value.warn { color:var(--amber); }
 
 /* Risk alerts — no pair, pinned above everything, not selectable */
-.risk-sec { margin-bottom:18px; }
+.risk-sec { margin-bottom:24px; }
 .risk-hdr {
-  font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em;
-  color:var(--text3); margin-bottom:6px;
+  font-size:16px; font-weight:700; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--text3); margin-bottom:9px;
 }
 .risk-card {
-  padding:9px 12px; margin-bottom:6px; border-radius:var(--r);
+  padding:13px 17px; margin-bottom:9px; border-radius:var(--r);
   background:var(--white); border:1px solid var(--border); border-left:4px solid var(--text3);
 }
 .risk-card.warning { border-left-color:var(--amber); background:var(--amber-bg); }
 .risk-card.critical { border-left-color:var(--red); background:var(--red-bg); }
-.risk-card .rmsg { font-weight:600; font-size:13px; }
+.risk-card .rmsg { font-weight:600; font-size:19px; }
 .risk-card.warning .rmsg { color:var(--amber); }
 .risk-card.critical .rmsg { color:var(--red); }
-.risk-card .rtime { font-family:'DM Mono',monospace; font-size:11px; color:var(--text3); margin-top:2px; }
+.risk-card .rtime { font-family:'DM Mono',monospace; font-size:16px; color:var(--text3); margin-top:3px; }
+
+/* Trade notifications - own section under Risk & discipline, chronological,
+   no pair grouping. Green=buy, red=sell, matching the direction badges
+   used elsewhere in the Suite rather than inventing a new colour meaning. */
+.trade-sec { margin-bottom:24px; }
+.trade-hdr {
+  display:flex; align-items:center; gap:12px; padding:13px 17px; border-radius:var(--r);
+  font-size:19px; font-weight:700; text-transform:uppercase; letter-spacing:.05em;
+  background:var(--navy2); color:#fff; margin-bottom:13px;
+}
+.trade-hdr .cnt { font-family:'DM Mono',monospace; font-weight:600; margin-left:auto; text-transform:none; letter-spacing:0; }
+.tcard {
+  display:flex; align-items:flex-start; gap:15px; padding:13px 17px; margin-bottom:9px;
+  border-radius:var(--r); background:var(--white); border:1px solid var(--border);
+  border-left:4px solid var(--text3); transition:background .3s;
+}
+.tcard.buy { border-left-color:var(--green); }
+.tcard.sell { border-left-color:var(--red); }
+.tcard.flash { background:var(--amber-bg); }
+.tcard input[type=checkbox] { margin-top:3px; width:22px; height:22px; accent-color:var(--navy); cursor:pointer; flex-shrink:0; }
+.tcard .tbody { flex:1; min-width:0; }
+.tcard .t1 { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+.tsym { font-family:'DM Mono',monospace; font-weight:700; font-size:19px; color:var(--text1); }
+.tbadge { font-size:15px; font-weight:700; padding:2px 10px; border-radius:20px; }
+.tbadge.buy { background:var(--green-bg); color:#166534; }
+.tbadge.sell { background:var(--red-bg); color:#7f1d1d; }
+.tmain { font-size:19px; color:var(--text1); margin-top:6px; }
+.tmeta { display:flex; gap:19px; margin-top:6px; flex-wrap:wrap; font-family:'DM Mono',monospace; font-size:17px; color:var(--text2); }
+.tmeta .pnl.pos { color:var(--green); font-weight:700; }
+.tmeta .pnl.neg { color:var(--red); font-weight:700; }
+.ttime { font-family:'DM Mono',monospace; font-size:16px; color:var(--text3); margin-top:6px; }
 
 /* Order-type group */
-.otgroup { margin-bottom:20px; }
+.otgroup { margin-bottom:24px; }
 .otgroup-hdr {
-  display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:var(--r);
-  font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px;
+  display:flex; align-items:center; gap:12px; padding:13px 17px; border-radius:var(--r);
+  font-size:19px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-bottom:13px;
 }
 .otgroup-hdr .cnt { font-family:'DM Mono',monospace; font-weight:600; opacity:.75; margin-left:auto; text-transform:none; letter-spacing:0; }
 .otg-1 { background:var(--ot1b); color:var(--ot1c); }
@@ -111,29 +156,39 @@ input.hsym::placeholder { color:rgba(255,255,255,.5); }
 .otg-4 { background:var(--ot4b); color:var(--ot4c); }
 .otg-5 { background:var(--bg2); color:var(--text2); }
 
-.pairblock { margin-bottom:12px; margin-left:4px; }
+.pairblock { margin-bottom:18px; margin-left:6px; }
 .pairhdr {
-  font-family:'DM Mono',monospace; font-weight:700; font-size:12.5px;
-  color:var(--navy); padding:2px 0 4px; border-bottom:1px solid var(--border); margin-bottom:6px;
+  font-family:'DM Mono',monospace; font-weight:700; font-size:19px;
+  color:var(--navy); padding:3px 0 6px; border-bottom:1px solid var(--border); margin-bottom:9px;
 }
+
+/* Structure pills - D1/H4 structure + CHoCH + Position, read live from the
+   same fx_pair_<PAIR> local storage the order-type grouping already uses.
+   Full checklist wording per the approved mockup, not abbreviated. */
+.pills { display:flex; flex-wrap:wrap; gap:9px; margin-bottom:13px; }
+.pill { font-size:16px; font-weight:500; padding:4px 15px; border-radius:20px; }
+.pill.bull { background:var(--green-bg); color:#27500A; }
+.pill.bear { background:var(--red-bg); color:#501313; }
+.pill.neutral { background:var(--bg2); color:var(--text2); }
+.pill.pos { background:#E6F1FB; color:#042C53; }
 
 .arow {
-  display:flex; align-items:flex-start; gap:9px; padding:8px 10px; margin-bottom:5px;
+  display:flex; align-items:flex-start; gap:14px; padding:13px 17px; margin-bottom:9px;
   border-radius:var(--r); background:var(--white); border:1px solid var(--border);
-  border-left:3px solid #4E9AF1; transition:background .3s;
+  border-left:4px solid #4E9AF1; transition:background .3s;
 }
 .arow.flash { background:var(--amber-bg); }
-.arow input[type=checkbox] { margin-top:2px; width:14px; height:14px; accent-color:var(--navy); cursor:pointer; }
+.arow input[type=checkbox] { margin-top:3px; width:22px; height:22px; accent-color:var(--navy); cursor:pointer; flex-shrink:0; }
 .arow .abody { flex:1; min-width:0; }
-.atime { font-family:'DM Mono',monospace; font-size:11px; color:var(--text3); white-space:nowrap; }
-.amsg { font-size:13px; color:var(--text1); margin-top:2px; }
-.aprice { font-family:'DM Mono',monospace; font-size:11.5px; color:var(--text2); margin-top:2px; }
+.atime { font-family:'DM Mono',monospace; font-size:16px; color:var(--text3); white-space:nowrap; }
+.amsg { font-size:19px; color:var(--text1); margin-top:3px; }
+.aprice { font-family:'DM Mono',monospace; font-size:17px; color:var(--text2); margin-top:3px; }
 
-#empty { padding:50px 20px; text-align:center; color:var(--text3); font-size:13.5px; line-height:1.7; }
+#empty { padding:70px 25px; text-align:center; color:var(--text3); font-size:20px; line-height:1.7; }
 #empty b { color:var(--text2); }
 
-::-webkit-scrollbar { width:9px; }
-::-webkit-scrollbar-thumb { background:var(--border2); border-radius:5px; }
+::-webkit-scrollbar { width:12px; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:6px; }
 </style>
 </head>
 <body>
@@ -144,7 +199,7 @@ input.hsym::placeholder { color:rgba(255,255,255,.5); }
     <span class="dot dead" id="dot"></span>
     <span id="status">connecting&hellip;</span>
     <span class="spacer"></span>
-    <label class="toggle"><input type="checkbox" id="sound" style="width:13px;height:13px"> &#128266; sound</label>
+    <label class="toggle"><input type="checkbox" id="sound" style="width:19px;height:19px"> &#128266; sound</label>
     <select class="hsel" id="tz">
       <option value="broker">Broker time (GMT+3)</option>
       <option value="mel">Melbourne time</option>
@@ -153,7 +208,7 @@ input.hsym::placeholder { color:rgba(255,255,255,.5); }
   <div class="hrow">
     <input class="hsym" type="text" id="symfilter" placeholder="filter pair&hellip;">
     <span class="spacer"></span>
-    <span id="samedevice" style="font-size:11px;color:rgba(255,255,255,.55)"></span>
+    <span id="samedevice" style="font-size:16px;color:rgba(255,255,255,.55)"></span>
   </div>
 </div>
 
@@ -168,6 +223,7 @@ input.hsym::placeholder { color:rgba(255,255,255,.5); }
 <script>
 (function(){
   "use strict";
+
   var WORKER = "https://fx-proxy.mwwakista.workers.dev";
   var API_KEY = "mcj-trading-secret-8271-kj";
   var POLL_MS = 8000;
@@ -197,6 +253,7 @@ input.hsym::placeholder { color:rgba(255,255,255,.5); }
   var lastOk = 0;
   var selected = {};   // alert id -> true
   var lastData = [];
+  var lastRisk = null, lastCaps = null;
 
   document.getElementById("tz").value = tz;
   document.getElementById("sound").checked = soundOn;
@@ -248,10 +305,144 @@ input.hsym::placeholder { color:rgba(255,255,255,.5); }
     (function(){ try { localStorage.setItem("__mcj_probe","1"); localStorage.removeItem("__mcj_probe"); return ""; }
       catch(e){ return "local storage unavailable \u2014 grouping will fall back to Neutral"; } })();
 
+  // Full per-pair checklist state (D1/H4 structure, CHoCH, position), same
+  // fx_pair_<PAIR> source as orderTypeTier() above. Field names verified
+  // directly against MCJ_Trading_Suite.html's renderD1Cell/renderPositionCell.
+  // Value -> label maps copied VERBATIM from MCJ_Trading_Suite.html's
+  // D1_OPTIONS / D1_CHOCH_OPTIONS / H4_OPTIONS / POSITION_OPTIONS.
+  // The Suite stores CODES (e.g. "bull_no_choch"), not display text, so
+  // without these maps the pills would print raw codes.
+  var STRUCT_LABELS = {
+    bullish: "Bullish", bearish: "Bearish", neutral: "Neutral",
+  };
+  var CHOCH_LABELS = {
+    bull_no_choch: "Bullish \u2014 No CHoCH",
+    bear_no_choch: "Bearish \u2014 No CHoCH",
+    bull_break_above: "Bull CHoCH \u2014 Break",
+    bear_break_below: "Bear CHoCH \u2014 Break",
+    pending: "Pending / Ranging",
+  };
+  var POSITION_LABELS = {
+    long_d1_h4: "Long (D1 & H4)",
+    long_h4_only: "Long (H4 Only)",
+    long_d1_only: "Long (D1 Only)",
+    long_pending: "Long (Pending H4 Break)",
+    short_d1_h4: "Short (D1 & H4)",
+    short_h4_only: "Short (H4 Only)",
+    short_d1_only: "Short (D1 Only)",
+    short_pending: "Short (Pending H4 Break)",
+    no_position: "No Position",
+  };
+
+  function getPairContext(pairLabel){
+    try {
+      var raw = localStorage.getItem("fx_pair_" + pairLabel);
+      if (!raw) return null;
+      var d = JSON.parse(raw);
+      return {
+        d1struct: d.d1struct || "", d1choch: d.d1choch || "",
+        h4struct: d.h4struct || "", h4choch: d.h4choch || "",
+        position: d.position || "",
+      };
+    } catch(e) { return null; }
+  }
+
+  function structPillClass(v){
+    if (!v) return "neutral";
+    var s = String(v).toLowerCase();
+    if (s.indexOf("bull") >= 0) return "bull";
+    if (s.indexOf("bear") >= 0) return "bear";
+    return "neutral";   // "neutral", "pending", or anything unrecognised
+  }
+
+  function pillsForPair(pairLabel){
+    var c = getPairContext(pairLabel) || { d1struct:"", d1choch:"", h4struct:"", h4choch:"", position:"" };
+
+    // Structure pills take their colour from the structure value; CHoCH pills
+    // take theirs from the CHoCH value itself, since a pair can be e.g.
+    // bullish structure with a bearish break.
+    var d1sCls = structPillClass(c.d1struct);
+    var h4sCls = structPillClass(c.h4struct);
+
+    return [
+      { cls: d1sCls, text: "D1 " + (STRUCT_LABELS[c.d1struct] || "Neutral / Ranging") },
+      { cls: structPillClass(c.d1choch), text: "D1 CHoCH: " + (CHOCH_LABELS[c.d1choch] || "\u2014") },
+      { cls: h4sCls, text: "H4 " + (STRUCT_LABELS[c.h4struct] || "Neutral / Ranging") },
+      { cls: structPillClass(c.h4choch), text: "H4 CHoCH: " + (CHOCH_LABELS[c.h4choch] || "\u2014") },
+      { cls: "pos", text: POSITION_LABELS[c.position] || "Position: \u2014" },
+    ];
+  }
+
+
+  function renderPills(pairLabel){
+    return '<div class="pills">' + pillsForPair(pairLabel).map(function(p){
+      return '<span class="pill ' + p.cls + '">' + esc(p.text) + '</span>';
+    }).join('') + '</div>';
+  }
+
   var typeLabel = {
     loss_streak: "Loss streak", daily_drawdown: "Daily cap", weekly_drawdown: "Weekly cap",
     trade_count_limit: "Trade limit", trade_count_exceeded: "Limit exceeded",
   };
+  var TRADE_TYPES = { trade_open: 1, trade_partial: 1, trade_close: 1 };
+
+  function fmtPct(v){ return (typeof v === "number") ? (v >= 0 ? "+" : "") + v.toFixed(2) + "%" : "\u2014"; }
+  function pctCls(v){ if (typeof v !== "number") return ""; return v > 0 ? "pos" : v < 0 ? "neg" : ""; }
+
+  function renderStatusStrip(risk, caps){
+    if (!risk) return "";
+    var tradesCls = risk.trades_today >= (risk.trades_per_day_limit || 2) ? "warn" : "";
+    return '<div class="risk-status">' +
+      '<div class="rs-item"><div class="rs-label">Loss streak</div><div class="rs-value">' +
+        (typeof risk.streak === "number" ? risk.streak : "\u2014") + '</div></div>' +
+      '<div class="rs-item"><div class="rs-label">Trades today</div><div class="rs-value ' + tradesCls + '">' +
+        (typeof risk.trades_today === "number" ? risk.trades_today : "\u2014") + ' / ' +
+        (risk.trades_per_day_limit || 2) + '</div></div>' +
+      '<div class="rs-item"><div class="rs-label">Daily P&amp;L</div><div class="rs-value ' + pctCls(risk.daily_pnl_percent) + '">' +
+        fmtPct(risk.daily_pnl_percent) + '</div></div>' +
+      '<div class="rs-item"><div class="rs-label">Weekly P&amp;L</div><div class="rs-value ' + pctCls(risk.weekly_pnl_percent) + '">' +
+        fmtPct(risk.weekly_pnl_percent) + '</div></div>' +
+      '</div>';
+  }
+
+  var TRADE_DIR_LABEL = { trade_open: "OPENED", trade_partial: "PARTIAL CLOSE", trade_close: "CLOSED" };
+
+  function tradeCard(a){
+    var dir = (a.direction || "").toLowerCase();
+    var isBuy = dir === "buy" || dir === "long";
+    var dirCls = isBuy ? "buy" : "sell";
+    var checked = selected[a.id] ? " checked" : "";
+    var lbl = a.symbol ? pairLabelFor(a.symbol) : (a.symbol || "\u2014");
+
+    var main = "", meta = [];
+    if (a.type === "trade_open"){
+      main = (isBuy ? "Buy" : "Sell") + " " + (a.lots != null ? a.lots : "?") + " lots @ " + (a.price != null ? a.price : "?");
+      if (a.sl != null) meta.push('<span>SL ' + a.sl + '</span>');
+      if (a.tp != null) meta.push('<span>TP ' + a.tp + '</span>');
+    } else {
+      var verb = a.type === "trade_close" ? "Closed" : "Partial close";
+      main = verb + " " + (a.closed_lots != null ? a.closed_lots : "?") + " lots @ " + (a.exit_price != null ? a.exit_price : "?");
+      if (typeof a.pnl === "number"){
+        var pnlCls = a.pnl >= 0 ? "pos" : "neg";
+        var pnlStr = (a.pnl >= 0 ? "+$" : "-$") + Math.abs(a.pnl).toFixed(2);
+        meta.push('<span class="pnl ' + pnlCls + '">P&amp;L ' + pnlStr + '</span>');
+      }
+      if (a.type === "trade_partial" && a.remaining_lots != null) meta.push('<span>remaining ' + a.remaining_lots + ' lots</span>');
+      if (a.reason) meta.push('<span>reason: ' + esc(a.reason) + '</span>');
+    }
+
+    return '<div class="tcard ' + dirCls + (a._new ? ' flash' : '') + '">' +
+      '<input type="checkbox" data-id="' + esc(a.id) + '"' + checked + '>' +
+      '<div class="tbody"><div class="t1">' +
+      '<span class="tsym">' + esc(lbl) + '</span>' +
+      '<span class="tbadge ' + dirCls + '">' + (isBuy ? "BUY" : "SELL") + ' \u2014 ' + (TRADE_DIR_LABEL[a.type] || a.type) + '</span>' +
+      '</div>' +
+      '<div class="tmain">' + main + '</div>' +
+      (meta.length ? '<div class="tmeta">' + meta.join('') + '</div>' : '') +
+      '<div class="ttime">' + esc(fmtTime(a.triggered_at)) +
+      (a.ticket ? ' \u00b7 ticket ' + esc(a.ticket) : '') + '</div>' +
+      '</div></div>';
+  }
 
   var beep = null;
   function ding(){
@@ -277,7 +468,14 @@ input.hsym::placeholder { color:rgba(255,255,255,.5); }
 
   function render(){
     var wrap = document.getElementById("wrap");
-    var risk = lastData.filter(function(a){ return a.type !== "price_alert"; });
+    // Catch-all by design: anything that is not a price alert and not a trade
+    // event lands here. If the Worker ever adds a new alert type, it stays
+    // VISIBLE rather than silently vanishing because no filter matched it.
+    var risk = lastData.filter(function(a){
+      return a.type !== "price_alert" && !TRADE_TYPES[a.type];
+    });
+    var trades = lastData.filter(function(a){ return TRADE_TYPES[a.type]; })
+      .sort(function(p,q){ return new Date(q.triggered_at) - new Date(p.triggered_at); });
     var price = lastData.filter(function(a){
       if (a.type !== "price_alert") return false;
       if (symFilter){
@@ -287,22 +485,30 @@ input.hsym::placeholder { color:rgba(255,255,255,.5); }
       return true;
     });
 
-    if (!lastData.length){
-      wrap.innerHTML = '<div id="empty"><b>No alerts yet.</b><br>Rules are being followed \u2014 nothing has fired.</div>';
+    var h = "";
+
+    if (!lastData.length && !lastRisk){
+      // Genuinely nothing yet, not even a risk snapshot - first load before
+      // the initial /risk response has arrived.
+      wrap.innerHTML = '<div id="empty"><b>Connecting\u2026</b></div>';
       updateBulkBar();
       return;
     }
 
-    var h = "";
+    h += '<div class="risk-sec"><div class="risk-hdr">Risk &amp; discipline</div>';
+    h += renderStatusStrip(lastRisk, lastCaps);
+    risk.forEach(function(a){
+      var sev = a.severity || "info";
+      h += '<div class="risk-card ' + sev + '"><div class="rmsg">' +
+        esc(typeLabel[a.type] || a.type) + ' \u2014 ' + esc(a.message) + '</div>' +
+        '<div class="rtime">' + esc(fmtTime(a.triggered_at)) + '</div></div>';
+    });
+    h += '</div>';
 
-    if (risk.length){
-      h += '<div class="risk-sec"><div class="risk-hdr">Risk &amp; discipline</div>';
-      risk.forEach(function(a){
-        var sev = a.severity || "info";
-        h += '<div class="risk-card ' + sev + '"><div class="rmsg">' +
-          esc(typeLabel[a.type] || a.type) + ' \u2014 ' + esc(a.message) + '</div>' +
-          '<div class="rtime">' + esc(fmtTime(a.triggered_at)) + '</div></div>';
-      });
+    if (trades.length){
+      h += '<div class="trade-sec"><div class="trade-hdr">Trade notifications<span class="cnt">' +
+        trades.length + '</span></div>';
+      trades.forEach(function(a){ h += tradeCard(a); });
       h += '</div>';
     }
 
@@ -330,19 +536,20 @@ input.hsym::placeholder { color:rgba(255,255,255,.5); }
 
       pairLabels.forEach(function(lbl){
         h += '<div class="pairblock"><div class="pairhdr">' + esc(lbl) + '</div>';
+        h += renderPills(lbl);
         pairs[lbl].forEach(function(a){ h += alertRow(a); });
         h += '</div>';
       });
       h += '</div>';
     });
 
-    if (!risk.length && !anyPrice){
+    if (!risk.length && !trades.length && !anyPrice){
       h += '<div id="empty"><b>No alerts match the current filter.</b></div>';
     }
 
     wrap.innerHTML = h;
 
-    wrap.querySelectorAll(".arow input[type=checkbox]").forEach(function(cb){
+    wrap.querySelectorAll(".arow input[type=checkbox], .tcard input[type=checkbox]").forEach(function(cb){
       cb.onchange = function(){
         var id = cb.getAttribute("data-id");
         if (cb.checked) selected[id] = true; else delete selected[id];
@@ -351,7 +558,7 @@ input.hsym::placeholder { color:rgba(255,255,255,.5); }
     });
 
     setTimeout(function(){
-      document.querySelectorAll(".arow.flash").forEach(function(el){ el.classList.remove("flash"); });
+      document.querySelectorAll(".arow.flash, .tcard.flash").forEach(function(el){ el.classList.remove("flash"); });
     }, 1200);
 
     updateBulkBar();
@@ -408,6 +615,8 @@ input.hsym::placeholder { color:rgba(255,255,255,.5); }
       .then(function(d){
         lastOk = Date.now();
         var alerts = d.alerts || [];
+        lastRisk = d.risk || null;
+        lastCaps = d.caps || null;
 
         if (knownIds){
           var freshCount = 0;
