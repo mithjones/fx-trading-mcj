@@ -609,7 +609,10 @@
     var alerts = (LIVE && LIVE._alerts) || [];
     var h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
       '<strong style="font-size:13px">MCJ Activity</strong>' +
-      '<span style="cursor:pointer;opacity:.5;font-size:16px" onclick="mcjCloseActivity()">&times;</span></div>';
+      '<span style="margin-left:auto;display:flex;align-items:center;gap:10px">' +
+      '<span style="cursor:pointer;font-size:11px;color:#475569;text-decoration:underline" ' +
+      'onclick="mcjPopAlerts()" title="Open alerts in a separate window for side-by-side MT5 comparison">\u29c9 Pop out</span>' +
+      '<span style="cursor:pointer;opacity:.5;font-size:16px" onclick="mcjCloseActivity()">&times;</span></span></div>';
 
     h += '<div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;opacity:.55;margin-bottom:5px">Alerts</div>';
     if (!alerts.length) {
@@ -667,6 +670,35 @@
   }
 
   window.mcjCloseActivity = function () { PANEL_OPEN = false; renderPanel(); };
+
+  /* The pop-out alerts window deletes alerts server-side directly; this
+     listener just keeps the Activity panel's cached copy in sync so a
+     deletion shows up here immediately instead of after up to 3 minutes. */
+  (function () {
+    var ch;
+    try { ch = new BroadcastChannel("mcj-alerts-sync"); } catch (e) { return; }
+    ch.onmessage = function (ev) {
+      if (!ev.data || ev.data.type !== "alerts-deleted" || !LIVE) return;
+      var gone = {};
+      ev.data.ids.forEach(function (id) { gone[id] = true; });
+      LIVE._alerts = (LIVE._alerts || []).filter(function (a) { return !gone[a.id]; });
+      updateButton();
+      if (PANEL_OPEN) renderPanel();
+    };
+  })();
+
+  /* Opens the standalone alerts page as its own OS-level window (not a tab),
+     sized to sit next to an MT5 terminal. Reuses the same named window on
+     repeat clicks instead of stacking duplicates. */
+  window.mcjPopAlerts = function () {
+    var url = new URL("mcj-alerts.html", window.location.href).href;
+    var w = 440, h = 780;
+    var left = window.screen.availWidth - w - 20;
+    var top = 40;
+    window.open(url, "mcjAlertsWindow",
+      "width=" + w + ",height=" + h + ",left=" + left + ",top=" + top +
+      ",resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,status=no");
+  };
 
   function shortChoch(c) {
     return { bull_no_choch: "no CHoCH", bear_no_choch: "no CHoCH",

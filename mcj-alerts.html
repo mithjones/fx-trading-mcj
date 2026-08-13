@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MCJ Alerts</title>
+<style>
+/* Palette lifted directly from MCJ_Trading_Suite.html's :root so this window
+   reads as part of the same product, not a bolt-on tool. */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --navy: #1A2744; --navy2: #243158; --navy3: #2E3F6F; --gold: #C9A84C;
+  --bg: #F2F3F6; --bg2: #E8E9ED; --white: #FFFFFF;
+  --border: rgba(26,39,68,0.11); --border2: rgba(26,39,68,0.20);
+  --text1: #1A2744; --text2: #4A5478; --text3: #8892B0;
+  --red: #C0392B; --red-bg: #FDECEA;
+  --green: #1E8449; --green-bg: #E8F5E9;
+  --amber: #B7770D; --amber-bg: #FFF8E1;
+  --r: 8px; --rl: 12px;
+  /* Order-type colours, copied verbatim from the Suite's td.ot1-4 rules */
+  --ot1b:#1A2744; --ot1c:#ffffff;
+  --ot2b:#FFD600; --ot2c:#C0392B;
+  --ot3b:#7B1FA2; --ot3c:#ffffff;
+  --ot4b:#2E7D32; --ot4c:#1A2744;
+}
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+body {
+  font-family:'DM Sans',system-ui,sans-serif; font-size:14px;
+  background:var(--bg); color:var(--text1); min-height:100vh;
+}
+
+/* ── Top bar, matching .topbar / .rules-banner treatment ── */
+#hdr {
+  background:linear-gradient(135deg, #1A2744 0%, #243860 100%);
+  border-bottom:2px solid #4E9AF1;
+  padding:10px 16px; position:sticky; top:0; z-index:200;
+  box-shadow:0 2px 12px rgba(26,39,68,0.10);
+}
+.hrow { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.hrow + .hrow { margin-top:8px; }
+.brand { font-family:'DM Mono',monospace; font-weight:700; font-size:14px; color:#fff; letter-spacing:.03em; }
+.dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.dot.live { background:var(--green); box-shadow:0 0 6px var(--green); }
+.dot.stale { background:var(--amber); }
+.dot.dead { background:var(--red); }
+#status { font-family:'DM Mono',monospace; font-size:11px; color:rgba(255,255,255,.65); }
+.spacer { margin-left:auto; }
+
+select.hsel {
+  font-size:12.5px; padding:5px 10px; border-radius:var(--r);
+  border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.08);
+  color:#fff; font-family:inherit;
+}
+select.hsel option { color:var(--text1); }
+input.hsym {
+  font-size:12.5px; padding:5px 10px; border-radius:var(--r);
+  border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.08);
+  color:#fff; font-family:'DM Mono',monospace; width:110px;
+}
+input.hsym::placeholder { color:rgba(255,255,255,.5); }
+.toggle { display:flex; align-items:center; gap:5px; font-size:12px; color:rgba(255,255,255,.8); cursor:pointer; user-select:none; }
+
+/* ── Bulk-action bar (only shows once something is selected) ── */
+#bulkbar {
+  display:none; align-items:center; gap:10px; padding:8px 16px;
+  background:var(--red-bg); border-bottom:2px solid var(--red);
+  font-size:13px; color:var(--red); font-weight:600;
+}
+#bulkbar.on { display:flex; }
+.btn-danger {
+  padding:6px 14px; border-radius:var(--r); border:none; background:var(--red);
+  color:#fff; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit;
+}
+.btn-cancel-sm {
+  padding:6px 14px; border-radius:var(--r); border:1px solid var(--border2);
+  background:var(--white); color:var(--text2); font-size:12.5px; font-weight:600;
+  cursor:pointer; font-family:inherit;
+}
+
+/* ── Body ── */
+#wrap { padding:14px 16px 40px; max-width:900px; margin:0 auto; }
+
+/* Risk alerts — no pair, pinned above everything, not selectable */
+.risk-sec { margin-bottom:18px; }
+.risk-hdr {
+  font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--text3); margin-bottom:6px;
+}
+.risk-card {
+  padding:9px 12px; margin-bottom:6px; border-radius:var(--r);
+  background:var(--white); border:1px solid var(--border); border-left:4px solid var(--text3);
+}
+.risk-card.warning { border-left-color:var(--amber); background:var(--amber-bg); }
+.risk-card.critical { border-left-color:var(--red); background:var(--red-bg); }
+.risk-card .rmsg { font-weight:600; font-size:13px; }
+.risk-card.warning .rmsg { color:var(--amber); }
+.risk-card.critical .rmsg { color:var(--red); }
+.risk-card .rtime { font-family:'DM Mono',monospace; font-size:11px; color:var(--text3); margin-top:2px; }
+
+/* Order-type group */
+.otgroup { margin-bottom:20px; }
+.otgroup-hdr {
+  display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:var(--r);
+  font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px;
+}
+.otgroup-hdr .cnt { font-family:'DM Mono',monospace; font-weight:600; opacity:.75; margin-left:auto; text-transform:none; letter-spacing:0; }
+.otg-1 { background:var(--ot1b); color:var(--ot1c); }
+.otg-2 { background:var(--ot2b); color:var(--ot2c); }
+.otg-3 { background:var(--ot3b); color:var(--ot3c); }
+.otg-4 { background:var(--ot4b); color:var(--ot4c); }
+.otg-5 { background:var(--bg2); color:var(--text2); }
+
+.pairblock { margin-bottom:12px; margin-left:4px; }
+.pairhdr {
+  font-family:'DM Mono',monospace; font-weight:700; font-size:12.5px;
+  color:var(--navy); padding:2px 0 4px; border-bottom:1px solid var(--border); margin-bottom:6px;
+}
+
+.arow {
+  display:flex; align-items:flex-start; gap:9px; padding:8px 10px; margin-bottom:5px;
+  border-radius:var(--r); background:var(--white); border:1px solid var(--border);
+  border-left:3px solid #4E9AF1; transition:background .3s;
+}
+.arow.flash { background:var(--amber-bg); }
+.arow input[type=checkbox] { margin-top:2px; width:14px; height:14px; accent-color:var(--navy); cursor:pointer; }
+.arow .abody { flex:1; min-width:0; }
+.atime { font-family:'DM Mono',monospace; font-size:11px; color:var(--text3); white-space:nowrap; }
+.amsg { font-size:13px; color:var(--text1); margin-top:2px; }
+.aprice { font-family:'DM Mono',monospace; font-size:11.5px; color:var(--text2); margin-top:2px; }
+
+#empty { padding:50px 20px; text-align:center; color:var(--text3); font-size:13.5px; line-height:1.7; }
+#empty b { color:var(--text2); }
+
+::-webkit-scrollbar { width:9px; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:5px; }
+</style>
+</head>
+<body>
+
+<div id="hdr">
+  <div class="hrow">
+    <span class="brand">MCJ ALERTS</span>
+    <span class="dot dead" id="dot"></span>
+    <span id="status">connecting&hellip;</span>
+    <span class="spacer"></span>
+    <label class="toggle"><input type="checkbox" id="sound" style="width:13px;height:13px"> &#128266; sound</label>
+    <select class="hsel" id="tz">
+      <option value="broker">Broker time (GMT+3)</option>
+      <option value="mel">Melbourne time</option>
+    </select>
+  </div>
+  <div class="hrow">
+    <input class="hsym" type="text" id="symfilter" placeholder="filter pair&hellip;">
+    <span class="spacer"></span>
+    <span id="samedevice" style="font-size:11px;color:rgba(255,255,255,.55)"></span>
+  </div>
+</div>
+
+<div id="bulkbar">
+  <span id="bulkcount">0 selected</span>
+  <button class="btn-danger" id="bulkdel">Delete selected</button>
+  <button class="btn-cancel-sm" id="bulkclear">Clear selection</button>
+</div>
+
+<div id="wrap"></div>
+
+<script>
+(function(){
+  "use strict";
+  var WORKER = "https://fx-proxy.mwwakista.workers.dev";
+  var API_KEY = "mcj-trading-secret-8271-kj";
+  var POLL_MS = 8000;
+  var STALE_MS = 30000;
+
+  /* Same pair set the Suite itself uses (MCJ_Trading_Suite.html GROUPS), kept
+     here as a plain list since this page runs standalone. */
+  var ALL_PAIRS = ['GBP/USD','NZD/JPY','USD/CAD','EUR/CAD','NZD/CAD','GBP/NZD','USD/CHF','XAU/USD',
+                    'EUR/USD','AUD/USD','AUD/JPY','USD/JPY','EUR/JPY','GBP/AUD'];
+
+  var OT_TIERS = [
+    { n: "1", cls: "otg-1", label: "Open Order" },
+    { n: "2", cls: "otg-2", label: "Limit Set" },
+    { n: "3", cls: "otg-3", label: "Active Watch" },
+    { n: "4", cls: "otg-4", label: "Watch" },
+    { n: "5", cls: "otg-5", label: "Neutral" },
+  ];
+
+  var LS_KEY = "mcj_alerts_win_prefs";
+  var prefs = load();
+  function load(){ try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch(e){ return {}; } }
+  function save(){ try { localStorage.setItem(LS_KEY, JSON.stringify(prefs)); } catch(e){} }
+
+  var symFilter = prefs.sym || "";
+  var tz = prefs.tz || "broker";
+  var soundOn = !!prefs.sound;
+  var lastOk = 0;
+  var selected = {};   // alert id -> true
+  var lastData = [];
+
+  document.getElementById("tz").value = tz;
+  document.getElementById("sound").checked = soundOn;
+  document.getElementById("symfilter").value = symFilter;
+
+  document.getElementById("tz").onchange = function(e){ tz = e.target.value; prefs.tz = tz; save(); render(); };
+  document.getElementById("sound").onchange = function(e){ soundOn = e.target.checked; prefs.sound = soundOn; save(); };
+  document.getElementById("symfilter").oninput = function(e){
+    symFilter = e.target.value.trim().toUpperCase(); prefs.sym = symFilter; save(); render();
+  };
+  document.getElementById("bulkclear").onclick = function(){ selected = {}; render(); };
+  document.getElementById("bulkdel").onclick = doDelete;
+
+  function esc(s){
+    return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+  function fmtTime(iso){
+    if (!iso) return "\u2014";
+    try {
+      var zone = tz === "mel" ? "Australia/Melbourne" : "Etc/GMT-3"; // broker = UTC+3
+      return new Date(iso).toLocaleTimeString("en-GB", { timeZone: zone, hour:"2-digit", minute:"2-digit", second:"2-digit" });
+    } catch(e) { return iso; }
+  }
+
+  /* Broker 6-char symbol -> Suite pair label, e.g. "XAUUSD" -> "XAU/USD".
+     Mirrors pairLabelFor() in mcj-live-risk.js. */
+  function pairLabelFor(symbol){
+    var m = ALL_PAIRS.find(function(p){ return p.replace(/\//g,"") === symbol; });
+    if (m) return m;
+    return symbol.length === 6 ? symbol.slice(0,3) + "/" + symbol.slice(3) : symbol;
+  }
+
+  /* Reads the SAME localStorage key the Suite writes (fx_pair_<PAIR>), so
+     grouping reflects whatever's currently on screen in the checklist.
+     Same-origin, same-browser only - by design, per the agreed constraint. */
+  function orderTypeTier(pairLabel){
+    try {
+      var raw = localStorage.getItem("fx_pair_" + pairLabel);
+      if (!raw) return "5";
+      var d = JSON.parse(raw);
+      var v = d && d.ot;
+      if (!v) return "5";
+      var n = v[0];
+      return (n === "1" || n === "2" || n === "3" || n === "4") ? n : "5";
+    } catch(e) { return "5"; }
+  }
+
+  document.getElementById("samedevice").textContent =
+    (function(){ try { localStorage.setItem("__mcj_probe","1"); localStorage.removeItem("__mcj_probe"); return ""; }
+      catch(e){ return "local storage unavailable \u2014 grouping will fall back to Neutral"; } })();
+
+  var typeLabel = {
+    loss_streak: "Loss streak", daily_drawdown: "Daily cap", weekly_drawdown: "Weekly cap",
+    trade_count_limit: "Trade limit", trade_count_exceeded: "Limit exceeded",
+  };
+
+  var beep = null;
+  function ding(){
+    if (!soundOn) return;
+    try {
+      if (!beep) beep = new (window.AudioContext||window.webkitAudioContext)();
+      var o = beep.createOscillator(), g = beep.createGain();
+      o.frequency.value = 880; o.type = "sine";
+      g.gain.setValueAtTime(0.001, beep.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.15, beep.currentTime + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.001, beep.currentTime + 0.25);
+      o.connect(g); g.connect(beep.destination);
+      o.start(); o.stop(beep.currentTime + 0.25);
+    } catch(e){}
+  }
+
+  // ─────────── SYNC TO THE ACTIVITY PANEL ───────────
+  // Same-origin broadcast so an open Suite tab drops deleted alerts instantly
+  // instead of waiting on its own 3-minute poll.
+  var CHANNEL = (function(){ try { return new BroadcastChannel("mcj-alerts-sync"); } catch(e){ return null; } })();
+
+  // ─────────── RENDER ───────────
+
+  function render(){
+    var wrap = document.getElementById("wrap");
+    var risk = lastData.filter(function(a){ return a.type !== "price_alert"; });
+    var price = lastData.filter(function(a){
+      if (a.type !== "price_alert") return false;
+      if (symFilter){
+        var lbl = a.symbol ? pairLabelFor(a.symbol) : "";
+        if (lbl.replace("/","").indexOf(symFilter) < 0) return false;
+      }
+      return true;
+    });
+
+    if (!lastData.length){
+      wrap.innerHTML = '<div id="empty"><b>No alerts yet.</b><br>Rules are being followed \u2014 nothing has fired.</div>';
+      updateBulkBar();
+      return;
+    }
+
+    var h = "";
+
+    if (risk.length){
+      h += '<div class="risk-sec"><div class="risk-hdr">Risk &amp; discipline</div>';
+      risk.forEach(function(a){
+        var sev = a.severity || "info";
+        h += '<div class="risk-card ' + sev + '"><div class="rmsg">' +
+          esc(typeLabel[a.type] || a.type) + ' \u2014 ' + esc(a.message) + '</div>' +
+          '<div class="rtime">' + esc(fmtTime(a.triggered_at)) + '</div></div>';
+      });
+      h += '</div>';
+    }
+
+    // Group price alerts: tier -> pairLabel -> [alerts]
+    var byTierPair = {};
+    price.forEach(function(a){
+      var lbl = a.symbol ? pairLabelFor(a.symbol) : "\u2014";
+      var tier = a.symbol ? orderTypeTier(lbl) : "5";
+      byTierPair[tier] = byTierPair[tier] || {};
+      byTierPair[tier][lbl] = byTierPair[tier][lbl] || [];
+      byTierPair[tier][lbl].push(a);
+    });
+
+    var anyPrice = false;
+    OT_TIERS.forEach(function(tier){
+      var pairs = byTierPair[tier.n];
+      if (!pairs) return;
+      var pairLabels = Object.keys(pairs).sort();
+      if (!pairLabels.length) return;
+      anyPrice = true;
+
+      var tierCount = pairLabels.reduce(function(sum,p){ return sum + pairs[p].length; }, 0);
+      h += '<div class="otgroup"><div class="otgroup-hdr ' + tier.cls + '">' +
+        esc(tier.label) + '<span class="cnt">' + tierCount + '</span></div>';
+
+      pairLabels.forEach(function(lbl){
+        h += '<div class="pairblock"><div class="pairhdr">' + esc(lbl) + '</div>';
+        pairs[lbl].forEach(function(a){ h += alertRow(a); });
+        h += '</div>';
+      });
+      h += '</div>';
+    });
+
+    if (!risk.length && !anyPrice){
+      h += '<div id="empty"><b>No alerts match the current filter.</b></div>';
+    }
+
+    wrap.innerHTML = h;
+
+    wrap.querySelectorAll(".arow input[type=checkbox]").forEach(function(cb){
+      cb.onchange = function(){
+        var id = cb.getAttribute("data-id");
+        if (cb.checked) selected[id] = true; else delete selected[id];
+        updateBulkBar();
+      };
+    });
+
+    setTimeout(function(){
+      document.querySelectorAll(".arow.flash").forEach(function(el){ el.classList.remove("flash"); });
+    }, 1200);
+
+    updateBulkBar();
+  }
+
+  function alertRow(a){
+    var checked = selected[a.id] ? " checked" : "";
+    return '<div class="arow' + (a._new ? ' flash' : '') + '">' +
+      '<input type="checkbox" data-id="' + esc(a.id) + '"' + checked + '>' +
+      '<div class="abody"><span class="atime">' + esc(fmtTime(a.triggered_at)) + '</span>' +
+      '<div class="amsg">' + esc(a.message) + '</div>' +
+      (typeof a.price === "number" ? '<div class="aprice">@ ' + a.price + '</div>' : '') +
+      '</div></div>';
+  }
+
+  function updateBulkBar(){
+    var ids = Object.keys(selected);
+    var bar = document.getElementById("bulkbar");
+    bar.classList.toggle("on", ids.length > 0);
+    document.getElementById("bulkcount").textContent = ids.length + " selected";
+  }
+
+  // ─────────── DELETE ───────────
+
+  function doDelete(){
+    var ids = Object.keys(selected);
+    if (!ids.length) return;
+    fetch(WORKER + "/alerts/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-MCJ-Key": API_KEY },
+      body: JSON.stringify({ ids: ids }),
+    })
+      .then(function(r){ if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(function(){
+        lastData = lastData.filter(function(a){ return !selected[a.id]; });
+        if (CHANNEL) CHANNEL.postMessage({ type: "alerts-deleted", ids: ids });
+        selected = {};
+        render();
+      })
+      .catch(function(e){ alert("Delete failed: " + e.message); });
+  }
+
+  // ─────────── POLL ───────────
+
+  var knownIds = null;
+
+  function poll(){
+    fetch(WORKER + "/risk", { headers: { "X-MCJ-Key": API_KEY } })
+      .then(function(r){
+        if (r.status === 401) throw new Error("Unauthorized \u2014 key mismatch");
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(function(d){
+        lastOk = Date.now();
+        var alerts = d.alerts || [];
+
+        if (knownIds){
+          var freshCount = 0;
+          alerts.forEach(function(a){ if (!knownIds[a.id]) { a._new = true; freshCount++; } });
+          if (freshCount > 0) ding();
+        }
+        knownIds = {};
+        alerts.forEach(function(a){ knownIds[a.id] = true; });
+
+        // Drop anything already deleted locally but possibly still mid-flight
+        // on the server due to poll timing.
+        var stillSelected = {};
+        Object.keys(selected).forEach(function(id){
+          if (alerts.some(function(a){ return a.id === id; })) stillSelected[id] = true;
+        });
+        selected = stillSelected;
+
+        lastData = alerts;
+        render();
+        paintStatus("live");
+      })
+      .catch(function(e){ paintStatus("dead", e.message); });
+  }
+
+  function paintStatus(state, err){
+    var dot = document.getElementById("dot"), st = document.getElementById("status");
+    var age = lastOk ? Math.round((Date.now() - lastOk)/1000) : null;
+    if (state === "dead" && !lastOk){ dot.className = "dot dead"; st.textContent = err || "connection failed"; return; }
+    if (age !== null && age > STALE_MS/1000){ dot.className = "dot stale"; st.textContent = "stale \u2014 last update " + age + "s ago"; return; }
+    dot.className = "dot live";
+    st.textContent = age === null ? "connecting\u2026" : "live \u00b7 updated " + age + "s ago";
+  }
+
+  // If the Suite (or another alerts window) deletes something, drop it here too.
+  if (CHANNEL) {
+    CHANNEL.onmessage = function(ev){
+      if (ev.data && ev.data.type === "alerts-deleted"){
+        var gone = {}; ev.data.ids.forEach(function(id){ gone[id] = true; });
+        lastData = lastData.filter(function(a){ return !gone[a.id]; });
+        render();
+      }
+    };
+  }
+
+  poll();
+  setInterval(poll, POLL_MS);
+  setInterval(function(){ paintStatus(); }, 1000);
+})();
+</script>
+</body>
+</html>
