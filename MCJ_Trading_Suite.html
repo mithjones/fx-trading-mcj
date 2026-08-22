@@ -3148,7 +3148,8 @@ body{padding-top:38px !important}
     <div class="grid-wrap"><table class="mg" id="mg"></table></div>
     <div class="action-row">
       <button class="btn primary" id="markDoneBtn" onclick="markDayDone()">Mark day as complete</button>
-      <span style="font-size:13px;color:var(--text3)">Mark complete once you have reviewed all pairs for this day.</span>
+      <button class="btn" onclick="moAutoRefresh()" title="Re-check the Worker for executed trades and tick any new ones">&#8635; Refresh executed trades</button>
+      <span style="font-size:13px;color:var(--text3)">Executed trades tick themselves automatically. Refresh if one closed just now.</span>
     </div>
   </div>
 
@@ -3374,7 +3375,7 @@ body{padding-top:38px !important}
    script block, which showed up as a blank pair table and frozen clocks.
    Patching setItem once protects every call site, present and future.
 ══════════════════════════════════════════════════════════════════════ */
-window.MCJ_VERSION = '2026.08.12-exec';
+window.MCJ_VERSION = '2026.08.21-moauto';
 (function(){
   window.__storageFail = 0;
   window.__storageErr  = null;
@@ -10295,6 +10296,286 @@ function disconnectSheet(){
 function onUrlInput(input){input.classList.remove('ok','err');}
 
 /* Tabs */
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MO TRACKER — AUTO-POPULATE FROM EXECUTIONS
+   ─────────────────────────────────────────────────────────────────────────
+   Pulls executed trades from the Worker's /executions endpoint and ticks the
+   matching "Taken" cell in the MO tracker grid.
+
+   AGREED BEHAVIOUR (17 Aug):
+     • Automatic, on MO tab load. No button to press.
+     • Setup code defaults to 'BO (WT)' (Breakout with trend).
+     • Outcome auto-populates from the trade's P&L: Win / Loss / BE, or
+       Pending while the position is still open.
+     • Direction from the trade: buy -> Long, sell -> Short.
+     • A cell already ticked MANUALLY is never overwritten.
+     • Everything written here stays editable via the existing dropdowns,
+       because it writes the same tkData records setTK() writes.
+
+   SESSION SLOT MAPPING (confirmed by Mith, AEST):
+     si 0 Pre Tokyo   08:00-09:00      si 5 Mid London  17:00-19:00
+     si 1 Tokyo Open  09:00-11:00      si 6 Pre NY      22:00-23:00
+     si 2 Mid Tokyo   11:00-12:00      si 7 NY Open     23:00-01:00 (wraps)
+     si 3 Pre London  15:00-16:00      si 8 Ldn/NY Rev  01:00-02:00
+     si 4 Ldn Open    16:00-17:00
+   Fills outside every window SNAP TO THE NEAREST slot rather than being
+   dropped, so a trade always lands somewhere and can be corrected by hand.
+
+   Trades are keyed by ticket in mo_autotk_seen so re-running never creates
+   duplicates and never re-adds something deliberately removed.
+══════════════════════════════════════════════════════════════════════════ */
+
+var MO_AUTO_WORKER  = 'https://fx-proxy.mwwakista.workers.dev';
+var MO_AUTO_KEY     = 'mcj-trading-secret-8271-kj';
+var MO_AUTO_SETUP   = 'BO (WT)';          /* Breakout with trend */
+var MO_AUTO_SEEN_LS = 'mo_autotk_seen';   /* tickets already processed */
+var MO_AUTO_ACCOUNT = 'personal';         /* never pull the FTMO mirror too */
+
+/* Slot windows in AEST minutes-from-midnight. `wrap:true` marks the slot
+   that crosses midnight, which needs different comparison logic. */
+var MO_SLOTS = [
+  { si:0, s: 480,  e: 540  },   /* 08:00-09:00 */
+  { si:1, s: 540,  e: 660  },   /* 09:00-11:00 */
+  { si:2, s: 660,  e: 720  },   /* 11:00-12:00 */
+  { si:3, s: 900,  e: 960  },   /* 15:00-16:00 */
+  { si:4, s: 960,  e: 1020 },   /* 16:00-17:00 */
+  { si:5, s: 1020, e: 1140 },   /* 17:00-19:00 */
+  { si:6, s: 1320, e: 1380 },   /* 22:00-23:00 */
+  { si:7, s: 1380, e: 1500, wrap:true },  /* 23:00-01:00, 1500 = 01:00 next day */
+  { si:8, s: 1500, e: 1560, wrap:true }   /* 01:00-02:00 */
+];
+
+/* Melbourne wall-clock parts for an instant. Uses Intl so it is correct
+   through daylight saving without a hand-maintained offset table. */
+function moAutoMelParts(iso){
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  try {
+    var fmt = new Intl.DateTimeFormat('en-GB', {
+      timeZone:'Australia/Melbourne', year:'numeric', month:'2-digit', day:'2-digit',
+      hour:'2-digit', minute:'2-digit', weekday:'short', hour12:false
+    });
+    var out = {};
+    fmt.formatToParts(d).forEach(function(p){ out[p.type] = p.value; });
+    var hour = parseInt(out.hour, 10);
+    if (hour === 24) hour = 0;                 /* en-GB can emit 24 for midnight */
+    return {
+      iso:      out.year + '-' + out.month + '-' + out.day,
+      weekday:  out.weekday,                   /* 'Mon' … 'Sun' */
+      minutes:  hour * 60 + parseInt(out.minute, 10)
+    };
+  } catch(e){ return null; }
+}
+
+/* Nearest-slot resolution. Inside a window -> that slot. Outside every
+   window -> whichever window edge is closest in time, measured on a
+   24h circle so 03:00 correctly snaps back to Ldn/NY Rev rather than
+   forward to Pre Tokyo five hours away. */
+function moAutoSlotFor(minutes){
+  var i, sl, m = minutes;
+
+  for (i = 0; i < MO_SLOTS.length; i++){
+    sl = MO_SLOTS[i];
+    if (sl.wrap){
+      /* window spans midnight: shift the test minute forward when it is in
+         the small hours so it sits on the same continuous number line */
+      var mm = (m < 240) ? m + 1440 : m;
+      if (mm >= sl.s && mm < sl.e) return sl.si;
+    } else if (m >= sl.s && m < sl.e){
+      return sl.si;
+    }
+  }
+
+  /* No window matched — find the closest edge.
+     TIE-BREAK: when a fill is exactly equidistant between two slots (13:30
+     sits 90 minutes from both Mid Tokyo's 12:00 close and Pre London's
+     15:00 open), the EARLIER slot wins, because iteration order is
+     chronological and the first best is kept. Deterministic rather than
+     arbitrary, and correctable by hand either way. */
+  function circDist(a, b){
+    var d = Math.abs(a - b) % 1440;
+    return Math.min(d, 1440 - d);
+  }
+  var best = MO_SLOTS[0].si, bestD = 1e9;
+  for (i = 0; i < MO_SLOTS.length; i++){
+    sl = MO_SLOTS[i];
+    var s = sl.s % 1440, e = sl.e % 1440;
+    var d1 = circDist(m, s), d2 = circDist(m, e);
+    var d  = Math.min(d1, d2);
+    if (d < bestD){ bestD = d; best = sl.si; }
+  }
+  return best;
+}
+
+/* Broker symbol (EURCAD / XAUUSD, suffix already stripped by the Worker)
+   back to the Suite's display label. */
+function moAutoPairLabel(symbol){
+  if (!symbol) return null;
+  var all = allPairs();
+  for (var i = 0; i < all.length; i++){
+    if (all[i].replace('/','') === symbol) return all[i];
+  }
+  return null;   /* not a tracked pair — skip rather than invent a row */
+}
+
+function moAutoOutcome(t){
+  if (!t.closed) return 'Pending';
+  var p = t.total_pnl;
+  if (typeof p !== 'number') return 'Pending';
+  if (p > 0.005)  return 'Win';
+  if (p < -0.005) return 'Loss';
+  return 'BE';
+}
+
+function moAutoSeen(){
+  try { return JSON.parse(localStorage.getItem(MO_AUTO_SEEN_LS)) || {}; }
+  catch(e){ return {}; }
+}
+function moAutoSaveSeen(m){
+  try { localStorage.setItem(MO_AUTO_SEEN_LS, JSON.stringify(m)); } catch(e){}
+}
+
+/* Writes to an ARBITRARY week/day. setTK() only ever targets the currently
+   viewed week and day, which is wrong here: a trade from last Thursday must
+   land on last Thursday's cell, not on whatever is on screen. */
+function moAutoWriteTK(w, d, p, si, st, dr, oc){
+  var exists = tkData.find(function(e){
+    return e.w === w && e.d === d && e.p === p && e.si === si;
+  });
+
+  if (exists){
+    /* A MANUAL cell is never touched - that is the hard rule.
+       But a row this module created itself, still sitting on 'Pending'
+       because the position was open at the time, SHOULD pick up the real
+       outcome once the trade closes. Otherwise every trade taken while the
+       tab was open stays Pending forever. Only ever Pending -> final, and
+       only on rows flagged auto:1. Any hand edit clears nothing else. */
+    if (exists.auto === 1 && exists.oc === 'Pending' && oc && oc !== 'Pending'){
+      exists.oc = oc;
+      exists.ts = Date.now();
+      return true;
+    }
+    return false;
+  }
+
+  tkData.push({ w:w, d:d, p:p, si:si, st:st, dr:dr||'', oc:oc||'', ts:Date.now(), auto:1 });
+  return true;
+}
+
+function moAutoMondayIso(isoDate){
+  var dt = new Date(isoDate + 'T12:00:00');   /* midday avoids DST edge cases */
+  return localIso(monday(dt));
+}
+
+var MO_AUTO_RUNNING = false;
+var MO_AUTO_LAST_RUN = 0;
+var MO_AUTO_MIN_GAP  = 60000;   /* 60s between automatic pulls */
+
+function moAutoPullExecutions(silent){
+  if (MO_AUTO_RUNNING) return Promise.resolve(0);
+
+  /* switchTab('log') fires on every tab click, so without this an idle
+     afternoon of tab-flipping would hammer the Worker and burn KV reads
+     for no new data. A manual Refresh (silent=false) always goes through. */
+  if (silent && (Date.now() - MO_AUTO_LAST_RUN) < MO_AUTO_MIN_GAP) return Promise.resolve(0);
+
+  MO_AUTO_RUNNING = true;
+  MO_AUTO_LAST_RUN = Date.now();
+
+  /* Look back far enough to catch a long weekend or a few days away, but
+     not so far that the response is huge. */
+  var to   = new Date();
+  var from = new Date(to.getTime() - 21 * 86400000);
+  function iso(d){
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone:'Australia/Melbourne', year:'numeric', month:'2-digit', day:'2-digit'
+    }).format(d);
+  }
+
+  /* account=personal is DELIBERATE. The FTMO account mirrors the personal
+     account via FX Blue, so without this filter every trade would arrive
+     twice and tick the same cell from two sources. The MO tracker records
+     the decision, not the number of accounts that executed it. */
+  var url = MO_AUTO_WORKER + '/executions?from=' + iso(from) + '&to=' + iso(to)
+          + '&account=' + encodeURIComponent(MO_AUTO_ACCOUNT);
+
+  return fetch(url, { headers:{ 'X-MCJ-Key': MO_AUTO_KEY } })
+    .then(function(r){
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(payload){
+      var trades = (payload && payload.trades) || [];
+      var seen = moAutoSeen();
+      var added = 0, skippedSeen = 0, skippedPair = 0, occupied = 0;
+
+      trades.forEach(function(t){
+        var key = String(t.ticket);
+
+        /* Re-check open trades so Pending can become Win/Loss later, but
+           never re-add one that is already recorded as final. */
+        if (seen[key] === 'final'){ skippedSeen++; return; }
+
+        var pair = moAutoPairLabel(t.symbol);
+        if (!pair){ skippedPair++; return; }
+
+        var mel = moAutoMelParts(t.entry_time);
+        if (!mel) return;
+
+        /* The grid runs Mon-Sat with no Sunday column. A Sunday Melbourne
+           timestamp is the very start of the new trading week (Sydney opens
+           Monday morning), so roll it FORWARD to Monday. Both the weekday
+           label and the week key must be derived from the same rolled date,
+           otherwise the trade lands on the previous week's Monday cell. */
+        var melIso = mel.iso, wd = mel.weekday;
+        if (wd === 'Sun'){
+          var nx = new Date(melIso + 'T12:00:00');
+          nx.setDate(nx.getDate() + 1);
+          melIso = localIso(nx);
+          wd = 'Mon';
+        }
+
+        var w  = moAutoMondayIso(melIso);
+        var si = moAutoSlotFor(mel.minutes);
+        var dr = (String(t.direction||'').toLowerCase() === 'sell') ? 'Short' : 'Long';
+        var oc = moAutoOutcome(t);
+
+        if (moAutoWriteTK(w, wd, pair, si, MO_AUTO_SETUP, dr, oc)) added++;
+        else occupied++;
+
+        seen[key] = t.closed ? 'final' : 'open';
+      });
+
+      moAutoSaveSeen(seen);
+
+      if (added > 0){
+        persist();
+        if (typeof buildGrid === 'function') buildGrid();
+      }
+
+      if (!silent){
+        if (added > 0){
+          toast('Added ' + added + ' executed trade' + (added===1?'':'s') + ' to the tracker', 3000);
+        } else if (occupied > 0){
+          toast('No new trades — ' + occupied + ' already recorded', 2500);
+        } else {
+          toast('No new executed trades found', 2200);
+        }
+      }
+      MO_AUTO_RUNNING = false;
+      return added;
+    })
+    .catch(function(e){
+      MO_AUTO_RUNNING = false;
+      if (!silent) toast('Could not reach the Worker: ' + e.message, 3500);
+      return 0;
+    });
+}
+
+/* Manual re-pull, for when a trade closes after the tab was already open. */
+function moAutoRefresh(){ return moAutoPullExecutions(false); }
+
 function switchTab(t){
   activeTab=t;
   var tabs=['log','pair','analytics','data','admin'];
@@ -10304,6 +10585,7 @@ function switchTab(t){
   var dg=document.getElementById('dayGroup'),dl=document.getElementById('dotLegend');
   if(dg)dg.style.display=isPair?'none':'flex';
   if(dl)dl.style.display=isPair?'none':'flex';
+  if(t==='log'){ try{ moAutoPullExecutions(true); }catch(e){} }
   if(t==='pair'){renderPairView();if(!pvActivePair&&allPairs().length>0)pvSelectPair(allPairs()[0]);}
   if(t==='analytics')renderAnalytics();
   if(t==='data')renderData();
@@ -11754,6 +12036,9 @@ function rebuildUI(){buildLegend();buildGroupFilter();buildGrid();if(activeTab==
   document.getElementById('wklbl').textContent=fmtWeek(weekStart);
   if(scriptUrl){var inp=document.getElementById('scriptUrl');if(inp){inp.value=scriptUrl;inp.classList.add('ok');}setSyncStatus('synced','Connected');}
   buildLegend();buildGroupFilter();updateDayBtns();updateDayStatus();buildGrid();
+  /* Auto-populate executed trades on first load. Silent: no toast unless the
+     user explicitly pressed Refresh. Deferred so the grid paints first. */
+  setTimeout(function(){ try{ moAutoPullExecutions(true); }catch(e){} }, 800);
 })();
 
 </script>

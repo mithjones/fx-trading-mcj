@@ -584,10 +584,37 @@
     updateButton();
   }
 
+  /* Day-scoped alert types - see the matching block in mcj-alerts.html.
+     "2 trades today" / "daily cap reached" describe a state that resets at
+     the Melbourne day boundary, so they must stop showing once the day
+     rolls over. Loss streak and weekly drawdown deliberately persist. */
+  var DAY_SCOPED_TYPES = { trade_count_limit: 1, trade_count_exceeded: 1, daily_drawdown: 1 };
+
+  function melDayOf(iso) {
+    try {
+      return new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Australia/Melbourne", year: "numeric", month: "2-digit", day: "2-digit",
+      }).format(new Date(iso));
+    } catch (e) { return null; }
+  }
+
+  function isStaleDayAlert(a) {
+    if (!DAY_SCOPED_TYPES[a.type]) return false;
+    var d = melDayOf(a.triggered_at);
+    if (!d) return false;
+    return d !== melDayOf(new Date().toISOString());
+  }
+
+  // Every alert consumer goes through this, so the count on the button and
+  // the list in the panel can never disagree.
+  function visibleAlerts() {
+    return ((LIVE && LIVE._alerts) || []).filter(function (a) { return !isStaleDayAlert(a); });
+  }
+
   function updateButton() {
     var b = document.getElementById("mcj-activity-btn");
     if (!b) return;
-    var alerts = (LIVE && LIVE._alerts) || [];
+    var alerts = visibleAlerts();
     var n = alerts.length;
     b.innerHTML = "Activity <strong style=\"color:" + (n ? "var(--red)" : "var(--navy)") +
       "\">" + (n ? n : "0") + "</strong>";
@@ -606,7 +633,7 @@
       document.body.appendChild(el);
     }
 
-    var alerts = (LIVE && LIVE._alerts) || [];
+    var alerts = visibleAlerts();
     var h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
       '<strong style="font-size:13px">MCJ Activity</strong>' +
       '<span style="margin-left:auto;display:flex;align-items:center;gap:10px">' +

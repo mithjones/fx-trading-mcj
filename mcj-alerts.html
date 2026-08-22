@@ -226,7 +226,22 @@ input.hsym::placeholder { color:rgba(255,255,255,.5); }
 
   var WORKER = "https://fx-proxy.mwwakista.workers.dev";
   var API_KEY = "mcj-trading-secret-8271-kj";
-  var POLL_MS = 8000;
+  /* POLLING INTERVAL AND KV COST
+     Each GET /risk costs roughly 9 Workers KV reads (recalculateRisk does 4
+     direct gets plus computeStreak, computeTradesToday and
+     computeWeekBreakdown, then readAlerts on top). The free tier allows
+     100,000 KV reads per day.
+
+     At the original 8s this window alone burned ~97,000 reads/day if left
+     open — essentially the entire free allowance from one browser window,
+     which is what triggered Cloudflare's 50% warning on 20 Aug 2026.
+
+     25s plus the visibility pause below brings a full day of use down to
+     roughly 10-15k reads. For confirming an alert fired and matching it
+     against MT5 the difference is not noticeable; it was only ever "up to
+     8 seconds behind" in the first place. */
+  var POLL_MS = 25000;
+  var HIDDEN_POLL_MS = 300000;   /* 5 min trickle while the window is hidden */
   var STALE_MS = 30000;
 
   /* Same pair set the Suite itself uses (MCJ_Trading_Suite.html GROUPS), kept
@@ -386,6 +401,34 @@ input.hsym::placeholder { color:rgba(255,255,255,.5); }
   };
   var TRADE_TYPES = { trade_open: 1, trade_partial: 1, trade_close: 1 };
 
+  /* Day-scoped alert types. These describe a state that RESETS at the day
+     boundary ("2 trades today", "daily cap reached"), so once the Melbourne
+     day rolls over they are describing yesterday and must stop showing -
+     otherwise a 03:12 "daily allowance used" card still looks current at
+     09:00 the next morning, which is exactly what happened on 17 Aug.
+
+     Loss streak and weekly drawdown are deliberately NOT here: a streak
+     persists across days until broken, and the weekly figure spans the week.
+     Both should keep showing regardless of the day boundary. */
+  var DAY_SCOPED_TYPES = { trade_count_limit: 1, trade_count_exceeded: 1, daily_drawdown: 1 };
+
+  function melDayOf(iso){
+    try {
+      return new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Australia/Melbourne", year: "numeric", month: "2-digit", day: "2-digit",
+      }).format(new Date(iso));
+    } catch(e){ return null; }
+  }
+  function melToday(){ return melDayOf(new Date().toISOString()); }
+
+  // True if this alert is day-scoped AND fired on an earlier Melbourne day.
+  function isStaleDayAlert(a){
+    if (!DAY_SCOPED_TYPES[a.type]) return false;
+    var d = melDayOf(a.triggered_at);
+    if (!d) return false;                 // unparseable date: show it, don't hide silently
+    return d !== melToday();
+  }
+
   function fmtPct(v){ return (typeof v === "number") ? (v >= 0 ? "+" : "") + v.toFixed(2) + "%" : "\u2014"; }
   function pctCls(v){ if (typeof v !== "number") return ""; return v > 0 ? "pos" : v < 0 ? "neg" : ""; }
 
@@ -472,7 +515,7 @@ input.hsym::placeholder { color:rgba(255,255,255,.5); }
     // event lands here. If the Worker ever adds a new alert type, it stays
     // VISIBLE rather than silently vanishing because no filter matched it.
     var risk = lastData.filter(function(a){
-      return a.type !== "price_alert" && !TRADE_TYPES[a.type];
+      return a.type !== "price_alert" && !TRADE_TYPES[a.type] && !isStaleDayAlert(a);
     });
     var trades = lastData.filter(function(a){ return TRADE_TYPES[a.type]; })
       .sort(function(p,q){ return new Date(q.triggered_at) - new Date(p.triggered_at); });
@@ -606,7 +649,10 @@ input.hsym::placeholder { color:rgba(255,255,255,.5); }
   var knownIds = null;
 
   function poll(){
-    fetch(WORKER + "/risk", { headers: { "X-MCJ-Key": API_KEY } })
+    /* MUST return the chain: scheduleNextPoll() calls .then() on the result
+       to queue the next poll. Without the return this resolves to undefined
+       and the whole polling loop dies after the first call. */
+    return fetch(WORKER + "/risk", { headers: { "X-MCJ-Key": API_KEY } })
       .then(function(r){
         if (r.status === 401) throw new Error("Unauthorized \u2014 key mismatch");
         if (!r.ok) throw new Error("HTTP " + r.status);
@@ -661,8 +707,35 @@ input.hsym::placeholder { color:rgba(255,255,255,.5); }
     };
   }
 
-  poll();
-  setInterval(poll, POLL_MS);
+  /* VISIBILITY-AWARE POLLING
+     This window spends most of its life behind the Suite or MT5. Polling a
+     hidden window at full rate is pure waste, so it drops to a slow trickle
+     when hidden (still slow enough to keep the status dot honest) and does
+     an IMMEDIATE catch-up poll the moment it becomes visible again - so
+     clicking back to it always shows current data, never a stale list.
+
+     A trickle rather than a full stop is deliberate: stopping entirely
+     would leave the sound ping silent for alerts that fire while the window
+     is buried, which defeats the point of having it open at all. */
+  var pollTimer = null;
+
+  function scheduleNextPoll(){
+    if (pollTimer) clearTimeout(pollTimer);
+    var gap = (typeof document.hidden === "boolean" && document.hidden) ? HIDDEN_POLL_MS : POLL_MS;
+    pollTimer = setTimeout(function(){ poll().then(scheduleNextPoll, scheduleNextPoll); }, gap);
+  }
+
+  document.addEventListener("visibilitychange", function(){
+    if (!document.hidden){
+      // Back in view: refresh now rather than waiting out the trickle.
+      if (pollTimer) clearTimeout(pollTimer);
+      poll().then(scheduleNextPoll, scheduleNextPoll);
+    } else {
+      scheduleNextPoll();   // re-arm at the slower cadence
+    }
+  });
+
+  poll().then(scheduleNextPoll, scheduleNextPoll);
   setInterval(function(){ paintStatus(); }, 1000);
 })();
 </script>
