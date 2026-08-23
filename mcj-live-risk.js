@@ -29,6 +29,7 @@
   var POLL_MS = 180000;   // 3 min - KV quota friendly
 
   var LIVE = null;          // latest risk payload from the Worker
+  var LIVE_AT = 0;          // epoch ms of the last successful poll
   var LIVE_OK = false;      // false => fall back to the app's manual figures
   var LAST_GOOD_BALANCE = null;
 
@@ -698,6 +699,26 @@
 
   window.mcjCloseActivity = function () { PANEL_OPEN = false; renderPanel(); };
 
+  /* Shared accessor for the alert data this module ALREADY polls every 3
+     minutes. The Prep & Session dialog reads from here instead of issuing
+     its own /risk fetch on every open - opening the dialog across all 14
+     pairs used to cost 14 requests (~126 KV reads) for data that was
+     already sitting in memory. Now it costs nothing.
+
+     Returns the raw list: day-scoped staleness filtering is applied by
+     each consumer, since the dialog and the Activity panel want it too. */
+  window.mcjGetAlerts = function () { return (LIVE && LIVE._alerts) || []; };
+
+  /* Age of that data in ms, so a consumer can show "updated Xs ago" or
+     decide whether a manual refresh is worth offering. */
+  window.mcjAlertsAge = function () { return LIVE_AT ? (Date.now() - LIVE_AT) : null; };
+
+  /* Forces an immediate poll and resolves once LIVE is updated. Used by the
+     dialog's refresh button - one deliberate call, not one per open. */
+  window.mcjRefreshAlerts = function () {
+    try { return poll(); } catch (e) { return Promise.resolve(); }
+  };
+
   /* The pop-out alerts window deletes alerts server-side directly; this
      listener just keeps the Activity panel's cached copy in sync so a
      deletion shows up here immediately instead of after up to 3 minutes. */
@@ -755,7 +776,9 @@
   // ─────────── POLLING ───────────
 
   function poll() {
-    fetch(WORKER + "/risk", { headers: hdrs() })
+    /* Returns the chain so window.mcjRefreshAlerts() can await a real
+       completion rather than resolving before the data has landed. */
+    return fetch(WORKER + "/risk", { headers: hdrs() })
       .then(function (r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();
@@ -766,6 +789,7 @@
         LIVE_OK = !!(LIVE && LIVE.display && typeof LIVE.display.balance === "number");
 
         if (LIVE) LIVE._alerts = payload.alerts || [];
+        LIVE_AT = Date.now();
 
         if (LIVE_OK) {
           window.updateRisk();

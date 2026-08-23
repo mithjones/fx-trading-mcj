@@ -1184,6 +1184,53 @@ body {
 }
 
 /* ── Analysis Prep Dialog ── */
+/* ── Prep & Session dialog: sessions, alerts, combined button ── */
+.prep-btn-sess { font-weight:600; opacity:.85; }
+
+.pd-sess-row { display:flex; gap:8px; margin-bottom:16px; }
+.pd-sess {
+  flex:1; text-align:center; padding:10px 8px; border-radius:8px; cursor:pointer;
+  border:2px solid var(--border2); background:var(--bg2); font-weight:600;
+  font-size:14px; color:var(--text3); user-select:none; transition:all .12s;
+}
+.pd-sess:hover { border-color:var(--text3); }
+.pd-sess.active.pd-sess-a  { border-color:#C9A84C; background:#FFF8E1; color:#B7770D; font-weight:700; }
+.pd-sess.active.pd-sess-l  { border-color:#1e40af; background:#E6F1FB; color:#042C53; font-weight:700; }
+.pd-sess.active.pd-sess-ny { border-color:#7c3aed; background:#F3E8FF; color:#5B21B6; font-weight:700; }
+.pd-sess-tick { margin-left:5px; font-size:12px; }
+
+.pd-alerts {
+  border:2px solid #4E9AF1; border-radius:8px; background:#F7FAFF;
+  padding:12px 14px; margin-bottom:16px;
+}
+.pd-al-hdr { display:flex; align-items:center; gap:9px; margin-bottom:9px; flex-wrap:wrap; }
+.pd-al-ttl { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#185FA5; }
+.pd-al-cnt {
+  font-family:'DM Mono',monospace; font-size:11px; font-weight:700;
+  background:#E6F1FB; color:#042C53; padding:1px 9px; border-radius:20px;
+}
+.pd-al-age { font-size:10.5px; color:var(--text3); font-family:'DM Mono',monospace; }
+.pd-al-refresh { font-size:13px; color:#185FA5; cursor:pointer; line-height:1; user-select:none; }
+.pd-al-refresh:hover { color:#042C53; }
+.pd-al-sel { margin-left:auto; font-size:11px; color:#185FA5; text-decoration:underline; cursor:pointer; }
+.pd-al-del {
+  font-size:11px; padding:4px 11px; border-radius:6px; background:#C0392B;
+  color:#fff; font-weight:600; cursor:pointer;
+}
+.pd-al {
+  display:flex; align-items:flex-start; gap:10px; padding:9px 11px; border-radius:6px;
+  background:#fff; border:1px solid var(--border); border-left:3px solid #4E9AF1; margin-bottom:5px;
+}
+.pd-al.trade-buy  { border-left-color:#1E8449; }
+.pd-al.trade-sell { border-left-color:#C0392B; }
+.pd-al input[type=checkbox] { margin-top:2px; width:16px; height:16px; accent-color:var(--navy); cursor:pointer; flex-shrink:0; }
+.pd-al-body { flex:1; min-width:0; }
+.pd-al-time { font-family:'DM Mono',monospace; font-size:11px; color:var(--text3); }
+.pd-al-msg  { font-size:13px; color:var(--text1); margin-top:2px; }
+.pd-al-sub  { font-family:'DM Mono',monospace; font-size:11.5px; color:var(--text2); margin-top:2px; }
+.pd-al-empty { padding:16px 10px; text-align:center; font-size:13px; color:var(--text3); }
+.pd-al-foot { font-size:11px; color:var(--text3); margin-top:8px; }
+
 .prep-dlg-progress {
   display: flex; align-items: center; gap: 12px;
   padding: 10px 14px;
@@ -2368,7 +2415,6 @@ body{padding-top:38px !important}
             <tr>
               <th rowspan="2" style="width:22px" class="thl"></th>
               <th rowspan="2" class="thl" style="min-width:62px">Pair</th>
-              <th rowspan="2" style="min-width:72px" title="Session reviewed: A=Asian, L=London, NY=New York">Session</th>
               <th rowspan="2" style="min-width:78px" title="Analysis Prep — click to open per-pair prep dialog">Prep</th>
               <th rowspan="2" class="thl" style="min-width:80px;text-align:center" title="D1 Structure — daily direction (Bullish / Bearish / Neutral)">D1 Structure</th>
               <th rowspan="2" class="thl" style="min-width:100px;text-align:center" title="D1 CHoCH — daily change of character trigger">D1 CHoCH</th>
@@ -2883,15 +2929,23 @@ body{padding-top:38px !important}
 
 <!-- ══ ANALYSIS PREP DIALOG (per-pair workspace) ══ -->
 <div id="prep-dlg" class="dialog-overlay" style="display:none" onclick="if(event.target===this)closePrepDialog()">
-  <div class="dialog-box" style="max-width:580px">
+  <div class="dialog-box" style="max-width:640px">
     <div class="dialog-hdr">
       <div>
-        <div class="dialog-title">Analysis Prep — <span id="prep-dlg-pair" style="font-family:'DM Mono',monospace">—</span></div>
-        <div style="font-size:12px;opacity:.65;margin-top:2px">Work through prep, capture notes, calculate R:R</div>
+        <div class="dialog-title">Prep &amp; Session — <span id="prep-dlg-pair" style="font-family:'DM Mono',monospace">—</span></div>
+        <div style="font-size:12px;opacity:.65;margin-top:2px">Alerts, sessions, prep and notes in one place</div>
       </div>
       <button class="dialog-close" onclick="closePrepDialog()">✕</button>
     </div>
     <div class="dialog-body">
+
+      <!-- ALERTS: first, per the agreed order. Populated by renderPrepDialogAlerts(). -->
+      <div class="prep-dlg-section-title">Alerts <span style="font-weight:400;color:var(--text3);letter-spacing:0;text-transform:none">— price alerts and trade notifications for this pair</span></div>
+      <div id="prep-dlg-alerts" class="pd-alerts"></div>
+
+      <!-- SESSIONS: replaces the removed Session column. Writes session_radio. -->
+      <div class="prep-dlg-section-title">Sessions traded <span style="font-weight:400;color:var(--text3);letter-spacing:0;text-transform:none">— tap to toggle, multiple allowed</span></div>
+      <div id="prep-dlg-sessions" class="pd-sess-row"></div>
 
       <div class="prep-dlg-progress">
         <div>
@@ -2905,52 +2959,14 @@ body{padding-top:38px !important}
         </div>
       </div>
 
-      <div class="prep-dlg-section-title">Prep checklist</div>
+      <div class="prep-dlg-section-title" id="prep-dlg-cl-hdr" style="cursor:pointer" onclick="togglePrepChecklistCollapse()">
+        <span id="prep-dlg-cl-chev">▾</span> Prep checklist
+        <span style="font-weight:400;color:var(--text3);letter-spacing:0;text-transform:none">— tap to collapse</span>
+      </div>
       <div id="prep-dlg-checklist" class="prep-dlg-checklist"></div>
 
       <div class="prep-dlg-section-title">Analysis notes <span style="font-weight:400;color:var(--text3);letter-spacing:0;text-transform:none">(max 200 chars)</span></div>
       <textarea id="prep-dlg-notes" class="prep-dlg-notes-ta" maxlength="200" placeholder="Analysis notes for this pair…" oninput="savePrepDialogNotes()"></textarea>
-
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <div class="prep-dlg-section-title" style="margin:0">R:R Calculator</div>
-        <button class="btn-sec" style="font-size:11px;padding:3px 10px" onclick="clearPrepDialogRR()">Clear R:R</button>
-      </div>
-
-      <div class="prep-dlg-rr">
-        <div class="prep-dlg-rr-inputs">
-          <div>
-            <div class="prep-dlg-rr-inp-lbl">Entry</div>
-            <input id="prep-dlg-rr-entry" class="prep-dlg-rr-inp" type="number" step="0.00001" placeholder="0.00000" oninput="calcPrepDialogRR()" onchange="savePrepDialogRR()">
-          </div>
-          <div>
-            <div class="prep-dlg-rr-inp-lbl">Stop</div>
-            <input id="prep-dlg-rr-stop" class="prep-dlg-rr-inp" type="number" step="0.00001" placeholder="0.00000" oninput="calcPrepDialogRR()" onchange="savePrepDialogRR()">
-          </div>
-          <div>
-            <div class="prep-dlg-rr-inp-lbl">Target</div>
-            <input id="prep-dlg-rr-target" class="prep-dlg-rr-inp" type="number" step="0.00001" placeholder="0.00000" oninput="calcPrepDialogRR()" onchange="savePrepDialogRR()">
-          </div>
-        </div>
-        <div class="prep-dlg-rr-outputs">
-          <div class="prep-dlg-rr-out">
-            <div class="prep-dlg-rr-out-lbl">Risk pips</div>
-            <div class="prep-dlg-rr-out-val" id="prep-dlg-rr-pips">—</div>
-          </div>
-          <div class="prep-dlg-rr-out">
-            <div class="prep-dlg-rr-out-lbl">Reward pips</div>
-            <div class="prep-dlg-rr-out-val" id="prep-dlg-rr-rwrd">—</div>
-          </div>
-          <div class="prep-dlg-rr-out">
-            <div class="prep-dlg-rr-out-lbl">R:R Ratio</div>
-            <div class="prep-dlg-rr-out-val" id="prep-dlg-rr-ratio">—</div>
-          </div>
-          <div class="prep-dlg-rr-out size">
-            <div class="prep-dlg-rr-out-lbl">Position size</div>
-            <div class="prep-dlg-rr-out-val" id="prep-dlg-rr-size">—</div>
-            <div class="prep-dlg-rr-out-sub" id="prep-dlg-rr-lots"></div>
-          </div>
-        </div>
-      </div>
 
     </div>
     <div class="dialog-footer">
@@ -3375,7 +3391,7 @@ body{padding-top:38px !important}
    script block, which showed up as a blank pair table and frozen clocks.
    Patching setItem once protects every call site, present and future.
 ══════════════════════════════════════════════════════════════════════ */
-window.MCJ_VERSION = '2026.08.21-moauto';
+window.MCJ_VERSION = '2026.08.23-prepsession-b';
 (function(){
   window.__storageFail = 0;
   window.__storageErr  = null;
@@ -4199,7 +4215,17 @@ function renderPrepCell(pair, prep) {
   var total = prep.length || 11;
   var cls = done === 0 ? 'prep-empty' : done === total ? 'prep-done' : 'prep-partial';
   var label = done === total ? (done + '/' + total + ' ✓') : (done + '/' + total);
-  return '<button class="prep-btn ' + cls + '" onclick="openPrepDialog(\'' + pair + '\')" title="Open Analysis Prep dialog for ' + pair + '">' + label + '</button>';
+
+  /* COMBINED BUTTON: the Session column has been removed, so sessions are
+     surfaced here instead. Reads the same session_radio field the old column
+     wrote, so nothing else in the Suite needs to change. */
+  var d  = getPair(pair);
+  var sv = (d && d.session_radio) ? String(d.session_radio) : '';
+  var sessTxt = sv ? sv.split(',').filter(function(x){ return x; }).join(',') : '—';
+
+  return '<button class="prep-btn ' + cls + '" onclick="openPrepDialog(\'' + pair + '\')"'
+       + ' title="Prep & sessions for ' + pair + ' — click to open">'
+       + label + ' <span class="prep-btn-sess">· ' + sessTxt + '</span></button>';
 }
 
 /* ══════════════════════════════
@@ -4211,13 +4237,16 @@ function openPrepDialog(pair) {
   PREP_DLG_PAIR = pair;
   var dlg = document.getElementById('prep-dlg');
   if (!dlg) return;
+  PD_SELECTED = {};            /* selection never carries between pairs */
   renderPrepDialog();
   dlg.style.display = 'flex';
   document.body.style.overflow = 'hidden';
+  loadPrepDialogAlerts();      /* async; panel paints cached state meanwhile */
 }
 
 function closePrepDialog() {
   PREP_DLG_PAIR = null;
+  PD_SELECTED = {};
   var dlg = document.getElementById('prep-dlg');
   if (dlg) dlg.style.display = 'none';
   document.body.style.overflow = '';
@@ -4271,15 +4300,247 @@ function renderPrepDialog() {
   var notesEl = document.getElementById('prep-dlg-notes');
   if (notesEl) notesEl.value = d.comment || '';
 
-  // R:R inputs
-  var rrd = ls('fx_pair_' + pair + '_rr') || {};
-  ['entry','stop','target'].forEach(function(f){
-    var el = document.getElementById('prep-dlg-rr-' + f);
-    if (el) el.value = rrd[f] || '';
+  // Sessions (replaces the removed Session column)
+  renderPrepDialogSessions();
+
+  // Alerts: paint cached data immediately so the panel is never blank;
+  // loadPrepDialogAlerts() refreshes it when the fetch returns.
+  renderPrepDialogAlerts();
+
+  // Checklist always starts expanded when the dialog opens.
+  var cl = document.getElementById('prep-dlg-checklist');
+  if (cl) cl.style.display = '';
+  var chev = document.getElementById('prep-dlg-cl-chev');
+  if (chev) chev.textContent = '\u25be';
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PREP & SESSION DIALOG — sessions, alerts, checklist collapse
+   ─────────────────────────────────────────────────────────────────────
+   The Session column was removed from the table; sessions are set here
+   instead. This writes via setSessRadio(), the SAME function the old
+   column used, so the session summary strip, filters and the combined
+   Prep button all stay in sync with no extra plumbing.
+
+   The alerts panel shows price alerts and trade notifications for this
+   pair only. Deleting hits the same /alerts/delete endpoint and the same
+   BroadcastChannel the pop-out uses, so a delete here clears the pop-out
+   and the Activity panel instantly.
+══════════════════════════════════════════════════════════════════════ */
+
+var PD_SESSIONS = [
+  { v:'A',  label:'Asian',    cls:'pd-sess-a'  },
+  { v:'L',  label:'London',   cls:'pd-sess-l'  },
+  { v:'NY', label:'New York', cls:'pd-sess-ny' }
+];
+
+function renderPrepDialogSessions() {
+  var el = document.getElementById('prep-dlg-sessions');
+  if (!el || !PREP_DLG_PAIR) return;
+  var d  = getPair(PREP_DLG_PAIR);
+  var sv = d.session_radio || '';
+  var on = sv ? sv.split(',') : [];
+  var h = '';
+  PD_SESSIONS.forEach(function(s){
+    var active = on.indexOf(s.v) >= 0;
+    h += '<div class="pd-sess' + (active ? ' active ' + s.cls : '') + '"'
+       + ' onclick="prepDlgToggleSession(\'' + s.v + '\')">'
+       + s.label + (active ? '<span class="pd-sess-tick">✓</span>' : '')
+       + '</div>';
+  });
+  el.innerHTML = h;
+}
+
+function prepDlgToggleSession(val) {
+  if (!PREP_DLG_PAIR) return;
+  /* setSessRadio persists, re-renders the table and refreshes the session
+     summary strip. We only need to repaint the dialog's own buttons. */
+  setSessRadio(PREP_DLG_PAIR, val);
+  renderPrepDialogSessions();
+}
+
+function togglePrepChecklistCollapse() {
+  var list = document.getElementById('prep-dlg-checklist');
+  var chev = document.getElementById('prep-dlg-cl-chev');
+  if (!list) return;
+  var hidden = list.style.display === 'none';
+  list.style.display = hidden ? '' : 'none';
+  if (chev) chev.textContent = hidden ? '▾' : '▸';
+}
+
+/* ── Alerts panel ───────────────────────────────────────────────────── */
+
+var PD_ALERT_WORKER = 'https://fx-proxy.mwwakista.workers.dev';
+var PD_ALERT_KEY    = 'mcj-trading-secret-8271-kj';
+var PD_ALERTS       = [];      /* alerts for the open pair */
+var PD_SELECTED     = {};      /* alert id -> true */
+var PD_ALERT_TRADE  = { trade_open:1, trade_partial:1, trade_close:1 };
+
+/* Broker symbol (EURCAD) -> Suite label (EUR/CAD). */
+function pdPairLabel(symbol) {
+  if (!symbol) return null;
+  var all = allPairs();
+  for (var i = 0; i < all.length; i++) {
+    if (all[i].replace('/','') === symbol) return all[i];
+  }
+  return null;
+}
+
+function pdFmtTime(iso) {
+  try {
+    return new Date(iso).toLocaleTimeString('en-GB', {
+      timeZone:'Australia/Melbourne', hour:'2-digit', minute:'2-digit', second:'2-digit'
+    });
+  } catch(e) { return iso || '—'; }
+}
+
+function pdEsc(t) {
+  return String(t == null ? '' : t)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderPrepDialogAlerts() {
+  var el = document.getElementById('prep-dlg-alerts');
+  if (!el || !PREP_DLG_PAIR) return;
+  var pair = PREP_DLG_PAIR;
+
+  var mine = PD_ALERTS.filter(function(a){
+    return a.symbol && pdPairLabel(a.symbol) === pair;
+  }).sort(function(x,y){ return new Date(y.triggered_at) - new Date(x.triggered_at); });
+
+  var selCount = 0;
+  mine.forEach(function(a){ if (PD_SELECTED[a.id]) selCount++; });
+
+  var h = '<div class="pd-al-hdr">'
+        + '<span class="pd-al-ttl">Alerts for ' + pdEsc(pair) + '</span>'
+        + '<span class="pd-al-cnt">' + mine.length + '</span>'
+        + '<span class="pd-al-age">' + pdEsc(pdAgeLabel()) + '</span>'
+        + '<span class="pd-al-refresh" id="pd-al-refresh" title="Fetch the latest alerts now"'
+        + ' onclick="prepDlgRefreshAlerts()">\u21bb</span>';
+  if (mine.length) {
+    h += '<span class="pd-al-sel" onclick="prepDlgSelectAllAlerts()">Select all</span>';
+    if (selCount) {
+      h += '<span class="pd-al-del" onclick="prepDlgDeleteAlerts()">Delete (' + selCount + ')</span>';
+    }
+  }
+  h += '</div>';
+
+  if (!mine.length) {
+    h += '<div class="pd-al-empty">No alerts for this pair.</div>';
+    el.innerHTML = h;
+    return;
+  }
+
+  mine.forEach(function(a){
+    var isTrade = !!PD_ALERT_TRADE[a.type];
+    var dir = String(a.direction || '').toLowerCase();
+    var buy = dir === 'buy' || dir === 'long';
+    var cls = isTrade ? (buy ? 'pd-al trade-buy' : 'pd-al trade-sell') : 'pd-al';
+    var body;
+
+    if (isTrade) {
+      var verb = a.type === 'trade_open' ? (buy ? 'BUY — OPENED' : 'SELL — OPENED')
+               : a.type === 'trade_close' ? 'CLOSED' : 'PARTIAL CLOSE';
+      var main = (a.type === 'trade_open')
+        ? ((a.lots != null ? a.lots : '?') + ' lots @ ' + (a.price != null ? a.price : '?'))
+        : ((a.closed_lots != null ? a.closed_lots : '?') + ' lots @ ' + (a.exit_price != null ? a.exit_price : '?'));
+      var extra = [];
+      if (a.type === 'trade_open') {
+        if (a.sl != null) extra.push('SL ' + a.sl);
+        if (a.tp != null) extra.push('TP ' + a.tp);
+      } else if (typeof a.pnl === 'number') {
+        extra.push('P&amp;L ' + (a.pnl >= 0 ? '+$' : '-$') + Math.abs(a.pnl).toFixed(2));
+        if (a.reason) extra.push(pdEsc(a.reason));
+      }
+      body = '<div class="pd-al-msg"><b>' + verb + '</b> · ' + pdEsc(main) + '</div>'
+           + (extra.length ? '<div class="pd-al-sub">' + extra.join(' · ') + '</div>' : '');
+    } else {
+      body = '<div class="pd-al-msg">' + pdEsc(a.message) + '</div>'
+           + (typeof a.price === 'number' ? '<div class="pd-al-sub">@ ' + a.price + '</div>' : '');
+    }
+
+    h += '<div class="' + cls + '">'
+       + '<input type="checkbox" ' + (PD_SELECTED[a.id] ? 'checked ' : '')
+       + 'onchange="prepDlgToggleAlert(\'' + pdEsc(a.id) + '\', this.checked)">'
+       + '<div class="pd-al-body">'
+       + '<span class="pd-al-time">' + pdEsc(pdFmtTime(a.triggered_at)) + '</span>'
+       + body + '</div></div>';
   });
 
-  // Trigger R:R calculation
-  calcPrepDialogRR();
+  h += '<div class="pd-al-foot">Deleting here also clears it from the pop-out window and Activity panel.</div>';
+  el.innerHTML = h;
+}
+
+function prepDlgToggleAlert(id, on) {
+  if (on) PD_SELECTED[id] = true; else delete PD_SELECTED[id];
+  renderPrepDialogAlerts();
+}
+
+function prepDlgSelectAllAlerts() {
+  if (!PREP_DLG_PAIR) return;
+  var pair = PREP_DLG_PAIR;
+  var mine = PD_ALERTS.filter(function(a){ return a.symbol && pdPairLabel(a.symbol) === pair; });
+  var allOn = mine.length && mine.every(function(a){ return PD_SELECTED[a.id]; });
+  mine.forEach(function(a){
+    if (allOn) delete PD_SELECTED[a.id]; else PD_SELECTED[a.id] = true;
+  });
+  renderPrepDialogAlerts();
+}
+
+function prepDlgDeleteAlerts() {
+  var ids = Object.keys(PD_SELECTED);
+  if (!ids.length) return;
+  fetch(PD_ALERT_WORKER + '/alerts/delete', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', 'X-MCJ-Key':PD_ALERT_KEY },
+    body: JSON.stringify({ ids: ids })
+  })
+  .then(function(r){ if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+  .then(function(){
+    PD_ALERTS = PD_ALERTS.filter(function(a){ return !PD_SELECTED[a.id]; });
+    /* Same channel the pop-out listens on, so it updates immediately
+       rather than waiting out its own poll. */
+    try {
+      var ch = new BroadcastChannel('mcj-alerts-sync');
+      ch.postMessage({ type:'alerts-deleted', ids: ids });
+      ch.close();
+    } catch(e) {}
+    PD_SELECTED = {};
+    renderPrepDialogAlerts();
+  })
+  .catch(function(e){
+    alert('Could not delete: ' + e.message);
+  });
+}
+
+function loadPrepDialogAlerts() {
+  /* NO NETWORK CALL. mcj-live-risk.js already polls /risk every 3 minutes
+     and holds the result in memory; this just reads it. Opening the dialog
+     across all 14 pairs previously cost 14 requests (~126 KV reads) for
+     data the browser already had. Now it costs nothing. */
+  if (!PREP_DLG_PAIR) return;
+  PD_ALERTS = (typeof window.mcjGetAlerts === 'function') ? window.mcjGetAlerts() : [];
+  renderPrepDialogAlerts();
+}
+
+/* Manual refresh: one deliberate call, rather than one on every open. */
+function prepDlgRefreshAlerts() {
+  var btn = document.getElementById('pd-al-refresh');
+  if (btn) btn.textContent = '…';
+  if (typeof window.mcjRefreshAlerts !== 'function') { loadPrepDialogAlerts(); return; }
+  window.mcjRefreshAlerts()
+    .then(function(){ loadPrepDialogAlerts(); })
+    .catch(function(){ loadPrepDialogAlerts(); });
+}
+
+/* "updated Xs ago", so stale data is visible rather than assumed current. */
+function pdAgeLabel() {
+  if (typeof window.mcjAlertsAge !== 'function') return '';
+  var ms = window.mcjAlertsAge();
+  if (ms === null || ms === undefined) return 'not yet loaded';
+  var s = Math.round(ms / 1000);
+  if (s < 60) return 'updated ' + s + 's ago';
+  return 'updated ' + Math.round(s / 60) + 'm ago';
 }
 
 function savePrepDialogNotes() {
@@ -4296,96 +4557,8 @@ function savePrepDialogNotes() {
   if (inlineComment && inlineComment !== el) inlineComment.value = el.value;
 }
 
-function calcPrepDialogRR() {
-  if (!PREP_DLG_PAIR) return;
-  var pair = PREP_DLG_PAIR;
-  var entryEl  = document.getElementById('prep-dlg-rr-entry');
-  var stopEl   = document.getElementById('prep-dlg-rr-stop');
-  var targetEl = document.getElementById('prep-dlg-rr-target');
-  if (!entryEl) return;
 
-  var entry  = parseFloat(entryEl.value)  || 0;
-  var stop   = parseFloat(stopEl.value)   || 0;
-  var target = parseFloat(targetEl.value) || 0;
 
-  var pipsEl  = document.getElementById('prep-dlg-rr-pips');
-  var rwrdEl  = document.getElementById('prep-dlg-rr-rwrd');
-  var ratioEl = document.getElementById('prep-dlg-rr-ratio');
-  var sizeEl  = document.getElementById('prep-dlg-rr-size');
-  var lotsEl  = document.getElementById('prep-dlg-rr-lots');
-
-  if (!entry || !target || !stop) {
-    if (pipsEl)  { pipsEl.textContent = '—';  pipsEl.className  = 'prep-dlg-rr-out-val'; }
-    if (rwrdEl)  { rwrdEl.textContent = '—';  rwrdEl.className  = 'prep-dlg-rr-out-val'; }
-    if (ratioEl) { ratioEl.textContent = '—'; ratioEl.className = 'prep-dlg-rr-out-val'; }
-    if (sizeEl)  sizeEl.textContent = '—';
-    if (lotsEl)  lotsEl.textContent = '';
-    return;
-  }
-
-  var pipSz = PIP_SIZE[pair] || PIP_SIZE.default;
-  var riskPips   = Math.abs(entry - stop)   / pipSz;
-  var rewardPips = Math.abs(target - entry) / pipSz;
-  var ratio = riskPips > 0 ? rewardPips / riskPips : 0;
-
-  var st = ls('fx_state') || {};
-  var bal  = parseFloat(st['ri-bal'] || 9000);
-  var rPct = parseFloat(st['ri-rp']  || 0.5);
-  var riskAud = bal * rPct / 100;
-  var pipValAud = PIP_VALUE_AUD[pair] || PIP_VALUE_AUD.default;
-  var posUnits = riskPips > 0 ? Math.round((riskAud / (riskPips * pipValAud)) * 100000) : 0;
-  var posSd = (posUnits / 100000).toFixed(2);
-
-  if (pipsEl) pipsEl.textContent = riskPips.toFixed(1);
-  if (rwrdEl) rwrdEl.textContent = rewardPips.toFixed(1);
-  if (ratioEl) {
-    ratioEl.textContent = '1 : ' + ratio.toFixed(2);
-    var ratioCls = ratio >= 3 ? 'good' : ratio >= 2 ? 'warn' : 'bad';
-    ratioEl.className = 'prep-dlg-rr-out-val ' + ratioCls;
-  }
-  if (sizeEl) sizeEl.textContent = posUnits.toLocaleString() + ' units';
-  if (lotsEl) lotsEl.textContent = posSd + ' lots';
-}
-
-function savePrepDialogRR() {
-  if (!PREP_DLG_PAIR) return;
-  var pair = PREP_DLG_PAIR;
-  var pid = pair.replace(/\//g,'_');
-  var d = {
-    entry:  (document.getElementById('prep-dlg-rr-entry') ||{}).value || '',
-    stop:   (document.getElementById('prep-dlg-rr-stop')  ||{}).value || '',
-    target: (document.getElementById('prep-dlg-rr-target')||{}).value || ''
-  };
-  ls('fx_pair_' + pair + '_rr', d);
-  if (typeof syncOnRRSaved === 'function') syncOnRRSaved(pair);
-  // Update R:R column in main table
-  renderTable(); applyFilters();
-  // Mirror into the inline R:R inputs if the expansion is open
-  ['entry','stop','target'].forEach(function(f){
-    var inlineEl = document.getElementById('rr-' + f + '-' + pid);
-    if (inlineEl) inlineEl.value = d[f];
-  });
-}
-
-function clearPrepDialogRR() {
-  if (!PREP_DLG_PAIR) return;
-  if (!confirm('Clear R:R Calculator (Entry / Stop / Target) for ' + PREP_DLG_PAIR + '?')) return;
-  var pair = PREP_DLG_PAIR;
-  ls('fx_pair_' + pair + '_rr', {});
-  if (typeof syncOnRRSaved === 'function') syncOnRRSaved(pair);
-  ['entry','stop','target'].forEach(function(f){
-    var el = document.getElementById('prep-dlg-rr-' + f);
-    if (el) el.value = '';
-  });
-  calcPrepDialogRR();
-  renderTable(); applyFilters();
-  // Also clear inline if open
-  var pid = pair.replace(/\//g,'_');
-  ['entry','stop','target'].forEach(function(f){
-    var inlineEl = document.getElementById('rr-' + f + '-' + pid);
-    if (inlineEl) inlineEl.value = '';
-  });
-}
 
 /* ══════════════════════════════
    SETUP SCORER DIALOG — per-pair workspace (C1-C15 + P1-P7)
@@ -5155,7 +5328,7 @@ function renderExpanded(pair) {
   var rrBal = (ls('fx_state') || {})['ri-bal'] || '9000';
   var rrRisk = (ls('fx_state') || {})['ri-rp'] || '0.5';
 
-  el.innerHTML = '<td colspan="21" style="padding:0"><div class="exp-panel">'
+  el.innerHTML = '<td colspan="20" style="padding:0"><div class="exp-panel">'
     + '<div class="ep-top">'
     +   '<span class="ep-pair" style="white-space:nowrap">' + pair + '</span>'
     +   '<div class="pair-comment-wrap">'
@@ -5225,7 +5398,7 @@ function renderTable() {
     var grpKey = grp.label;
     var isCollapsed = (typeof collapsedGroups !== 'undefined') && collapsedGroups[grpKey] === true;
     var chev = isCollapsed ? '\u25B6' : '\u25BC';
-    html += '<tr class="grp-row" data-grp-row="' + grpKey + '"><td colspan="21" style="cursor:pointer;user-select:none" onclick="toggleGroupCollapse(\'' + grpKey + '\')"><span style="display:inline-block;width:16px;font-family:DM Mono,monospace">' + chev + '</span>' + grp.label + '</td></tr>';
+    html += '<tr class="grp-row" data-grp-row="' + grpKey + '"><td colspan="20" style="cursor:pointer;user-select:none" onclick="toggleGroupCollapse(\'' + grpKey + '\')"><span style="display:inline-block;width:16px;font-family:DM Mono,monospace">' + chev + '</span>' + grp.label + '</td></tr>';
 
     grp.pairs.forEach(function(pair){
       var pid    = pair.replace('/','_');
@@ -5290,11 +5463,6 @@ function renderTable() {
       html += '<tr id="row-' + pid + '" data-grp="' + grp.label + '">'
         + '<td><button class="ebtn' + (isExp?' open':'') + '" id="ebtn-' + pid + '" onclick="toggleRow(\'' + pair + '\')">' + (isExp?'▼':'▶') + '</button></td>'
         + '<td class="tdl" style="font-weight:600">' + pair + '</td>'
-        + (function(){
-            var sv = d.session_radio || '';
-            function sb(lbl,cls){ var isActive=(sv?sv.split(',').indexOf(lbl)>=0:false); return '<button class="sess-btn '+cls+(isActive?' active':'')+' " data-pair="'+pair+'" data-val="'+lbl+'" onclick="handleSessRadio(this)">'+lbl+'</button>'; }
-            return '<td><div class="sess-radio">'+sb('A','sess-A')+sb('L','sess-L')+sb('NY','sess-NY')+'</div></td>';
-          })()
         + '<td class="prep-cell">' + renderPrepCell(pair, (d && Array.isArray(d.prep)) ? d.prep : emptyPrep()) + '</td>'
         + (function(){ ALGN_ = structAlign(d); return ''; })()
         + renderD1Cell(pair, d.d1struct,   structAlignCls(ALGN_,'first'))
@@ -5326,7 +5494,7 @@ function renderTable() {
           })()
         + '<td><span class="grade ' + gi.cls + '">' + gi.lbl + '</span></td>'
         + '</tr>'
-        + '<tr id="exp-' + pid + '" data-grp="' + grp.label + '"><td colspan="21" style="padding:0"></td></tr>';
+        + '<tr id="exp-' + pid + '" data-grp="' + grp.label + '"><td colspan="20" style="padding:0"></td></tr>';
     });
   });
 
@@ -5339,14 +5507,14 @@ function toggleRow(pair) {
   if (expandedPair === pair) {
     expandedPair = null;
     var el = document.getElementById('exp-' + pid);
-    if (el) el.innerHTML = '<td colspan="21" style="padding:0"></td>';
+    if (el) el.innerHTML = '<td colspan="20" style="padding:0"></td>';
     var btn = document.getElementById('ebtn-' + pid);
     if (btn) { btn.textContent = '▶'; btn.classList.remove('open'); }
   } else {
     if (expandedPair) {
       var pp  = expandedPair.replace('/','_');
       var pe  = document.getElementById('exp-' + pp);
-      if (pe) pe.innerHTML = '<td colspan="21" style="padding:0"></td>';
+      if (pe) pe.innerHTML = '<td colspan="20" style="padding:0"></td>';
       var pb  = document.getElementById('ebtn-' + pp);
       if (pb) { pb.textContent = '▶'; pb.classList.remove('open'); }
     }
@@ -5547,7 +5715,7 @@ function renderExpanded(pair) {
   var rrBal = (ls('fx_state') || {})['ri-bal'] || '9000';
   var rrRisk = (ls('fx_state') || {})['ri-rp'] || '0.5';
 
-  el.innerHTML = '<td colspan="21" style="padding:0"><div class="exp-panel">'
+  el.innerHTML = '<td colspan="20" style="padding:0"><div class="exp-panel">'
     + '<div class="ep-top">'
     +   '<span class="ep-pair" style="white-space:nowrap">' + pair + '</span>'
     +   '<div class="pair-comment-wrap">'
@@ -5640,7 +5808,7 @@ function renderTable() {
     var grpKey = grp.label;
     var isCollapsed = (typeof collapsedGroups !== 'undefined') && collapsedGroups[grpKey] === true;
     var chev = isCollapsed ? '\u25B6' : '\u25BC';
-    html += '<tr class="grp-row" data-grp-row="' + grpKey + '"><td colspan="21" style="cursor:pointer;user-select:none" onclick="toggleGroupCollapse(\'' + grpKey + '\')"><span style="display:inline-block;width:16px;font-family:DM Mono,monospace">' + chev + '</span>' + grp.label + '</td></tr>';
+    html += '<tr class="grp-row" data-grp-row="' + grpKey + '"><td colspan="20" style="cursor:pointer;user-select:none" onclick="toggleGroupCollapse(\'' + grpKey + '\')"><span style="display:inline-block;width:16px;font-family:DM Mono,monospace">' + chev + '</span>' + grp.label + '</td></tr>';
 
     grp.pairs.forEach(function(pair){
       var pid    = pair.replace('/','_');
@@ -5705,11 +5873,6 @@ function renderTable() {
       html += '<tr id="row-' + pid + '" data-grp="' + grp.label + '">'
         + '<td><button class="ebtn' + (isExp?' open':'') + '" id="ebtn-' + pid + '" onclick="toggleRow(\'' + pair + '\')">' + (isExp?'▼':'▶') + '</button></td>'
         + '<td class="tdl" style="font-weight:600">' + pair + '</td>'
-        + (function(){
-            var sv = d.session_radio || '';
-            function sb(lbl,cls){ var isActive=(sv?sv.split(',').indexOf(lbl)>=0:false); return '<button class="sess-btn '+cls+(isActive?' active':'')+' " data-pair="'+pair+'" data-val="'+lbl+'" onclick="handleSessRadio(this)">'+lbl+'</button>'; }
-            return '<td><div class="sess-radio">'+sb('A','sess-A')+sb('L','sess-L')+sb('NY','sess-NY')+'</div></td>';
-          })()
         + '<td class="prep-cell">' + renderPrepCell(pair, (d && Array.isArray(d.prep)) ? d.prep : emptyPrep()) + '</td>'
         + (function(){ ALGN_ = structAlign(d); return ''; })()
         + renderD1Cell(pair, d.d1struct,   structAlignCls(ALGN_,'first'))
@@ -5741,7 +5904,7 @@ function renderTable() {
           })()
         + '<td><span class="grade ' + gi.cls + '">' + gi.lbl + '</span></td>'
         + '</tr>'
-        + '<tr id="exp-' + pid + '" data-grp="' + grp.label + '"><td colspan="21" style="padding:0"></td></tr>';
+        + '<tr id="exp-' + pid + '" data-grp="' + grp.label + '"><td colspan="20" style="padding:0"></td></tr>';
     });
   });
 
@@ -5755,14 +5918,14 @@ function toggleRow(pair) {
   if (expandedPair === pair) {
     expandedPair = null;
     var el = document.getElementById('exp-' + pid);
-    if (el) el.innerHTML = '<td colspan="21" style="padding:0"></td>';
+    if (el) el.innerHTML = '<td colspan="20" style="padding:0"></td>';
     var btn = document.getElementById('ebtn-' + pid);
     if (btn) { btn.textContent = '▶'; btn.classList.remove('open'); }
   } else {
     if (expandedPair) {
       var pp  = expandedPair.replace('/','_');
       var pe  = document.getElementById('exp-' + pp);
-      if (pe) pe.innerHTML = '<td colspan="21" style="padding:0"></td>';
+      if (pe) pe.innerHTML = '<td colspan="20" style="padding:0"></td>';
       var pb  = document.getElementById('ebtn-' + pp);
       if (pb) { pb.textContent = '▶'; pb.classList.remove('open'); }
     }
